@@ -1,13 +1,17 @@
+import streamlit as st
+from PIL import Image
 import os
 import sys
 
-# Add the src directory to Python path
-src_path = os.path.join(os.path.dirname(__file__), 'src')
-sys.path.append(src_path)
+# Add src to path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# Import and run the steganography app directly
-import streamlit as st
-from src.steganography import main
+from src.db_utils import init_db, verify_user, add_user, log_activity
+from src.image_utils import apply_filter, encode_image, decode_image
+
+def main():
+    st.title("🕵️ Image Steganography")
+    # Your main app code here
 
 if __name__ == "__main__":
     main()
