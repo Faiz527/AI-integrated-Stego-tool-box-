@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🕵️ Image Steganography Application
 
 A secure web application built with Streamlit that enables users to hide encrypted messages within images using steganography techniques. The application provides a user-friendly interface for encoding messages into images and decoding them later.
@@ -163,3 +164,7 @@ If you encounter issues:
 ## 👥 Contact
 
 For any inquiries or support, please contact: [nadaffaiz10@gmail.com]
+=======
+# AI-integrated-Stego-tool-box-
+collaborative platform for you to work on a module independently 
+>>>>>>> 4efc857b28d1d6b47ed83200cf9896ef5460fddf
