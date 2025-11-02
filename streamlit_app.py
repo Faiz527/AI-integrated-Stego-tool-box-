@@ -5,8 +5,9 @@ import sys
 src_path = os.path.join(os.path.dirname(__file__), 'src')
 sys.path.append(src_path)
 
-# Import and run the main app
-from app import main
+# Import and run the steganography app directly
+import streamlit as st
+from src.steganography import main
 
 if __name__ == "__main__":
     main()
