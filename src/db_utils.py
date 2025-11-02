@@ -7,11 +7,11 @@ import hashlib
 # Database configuration
 load_dotenv()
 DB_CONFIG = {
-    'dbname': os.getenv('DB_NAME', 'steganography'),
-    'user': os.getenv('DB_USER', 'postgres'),
-    'password': os.getenv('DB_PASSWORD', 'Password'),
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'port': os.getenv('PORT', '5432')
+    'dbname': st.secrets["postgres"]["dbname"],
+    'user': st.secrets["postgres"]["user"],
+    'password': st.secrets["postgres"]["password"],
+    'host': st.secrets["postgres"]["host"],
+    'port': st.secrets["postgres"]["port"]
 }
 
 def init_db():

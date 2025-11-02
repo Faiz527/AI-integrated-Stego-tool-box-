@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # 🕵️ Image Steganography Application
 
 A secure web application built with Streamlit that enables users to hide encrypted messages within images using steganography techniques. The application provides a user-friendly interface for encoding messages into images and decoding them later.
@@ -47,17 +46,22 @@ A secure web application built with Streamlit that enables users to hide encrypt
 
 ```
 ITR/
-│   launcher.py          # Application entry point
-│   requirements.txt     # Project dependencies
-│   README.md           # Project documentation
+│   streamlit_app.py    # Application entry point
+│   launcher.py         # Alternative launcher
+│   requirements.txt    # Project dependencies
+│   README.md          # Project documentation
+│
+├───.streamlit/
+│       config.toml    # Streamlit configuration
+│       secrets.toml   # Secrets configuration
 │
 └───src/
     │   steganography.py # Main Streamlit application
-    │   db_utils.py      # Database utilities
-    │   db.py           # Core database operations
-    │   image_utils.py   # Image processing functions
-    │   app.py          # Application logic
-    │   .env            # Environment configuration
+    │   db_utils.py     # Database utilities
+    │   db.py          # Core database operations
+    │   image_utils.py  # Image processing functions
+    │   app.py         # Application logic
+    │   .env           # Environment configuration
 ```
 
 ## 🚀 Getting Started
@@ -91,20 +95,21 @@ pip install -r requirements.txt
 ```
 
 4. Configure PostgreSQL:
-   - Install PostgreSQL if not already installed
    - Create a new database named 'steganography'
-   - Copy `src/.env.example` to `src/.env` (if provided)
-   - Update `src/.env` with your database credentials:
-   ```env
-   DB_HOST=localhost
-   DB_NAME=steganography
-   DB_USER=your_username
-   DB_PASSWORD=your_password
-   PORT=5432
+   - Update `.streamlit/secrets.toml` with your database credentials:
+   ```toml
+   [postgres]
+   host = "localhost"
+   port = 5432
+   dbname = "steganography"
+   user = "your_username"
+   password = "your_password"
    ```
 
 5. Launch the application:
 ```bash
+python streamlit_app.py
+# or alternatively
 python launcher.py
 ```
 
@@ -141,6 +146,8 @@ python launcher.py
 
 ## 🤝 Contributing
 
+Contributions are welcome! This is a collaborative platform for working on modules independently.
+
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
@@ -152,19 +159,15 @@ python launcher.py
 If you encounter issues:
 
 1. Verify PostgreSQL is running
-2. Check database credentials in `.env`
+2. Check database credentials in `.streamlit/secrets.toml`
 3. Ensure all dependencies are installed correctly
 4. Verify encryption passwords when decoding
 5. Check console logs for detailed error messages
 
 ## 📝 License
 
-[Add your license information here]
+This project is open source and available under the [MIT License](LICENSE).
 
 ## 👥 Contact
 
-For any inquiries or support, please contact: [nadaffaiz10@gmail.com]
-=======
-# AI-integrated-Stego-tool-box-
-collaborative platform for you to work on a module independently 
->>>>>>> 4efc857b28d1d6b47ed83200cf9896ef5460fddf
+For any inquiries or support, please contact: nadaffaiz10@gmail.com
