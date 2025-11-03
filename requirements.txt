@@ -6,3 +6,4 @@ python-dotenv>=1.0.0
 cryptography>=41.0.0
 pandas>=2.0.0
 streamlit-option-menu>=0.3.2
+zipfile36>=0.1.3
