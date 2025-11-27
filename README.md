@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Image Steganography Application (ITR)
 
 A comprehensive web-based image steganography application built with Streamlit that supports multiple steganography methods (LSB, Hybrid DCT, Hybrid DWT) with encryption capabilities and detailed analytics.
