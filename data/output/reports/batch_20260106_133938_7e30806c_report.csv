@@ -1,0 +1,6 @@
+Method,Filename,Status,Encoding_Time_s,Image_Size,Output_Path
+DWT,image_1,Success,0.021,"(300, 300)",C:\Users\faizn\OneDrive\Desktop\Projects\ITR\data\output\batches\batch_20260106_133938_7e30806c\encoded\DWT\image_1_DWT.png
+DWT,image_2,Success,0.015,"(300, 300)",C:\Users\faizn\OneDrive\Desktop\Projects\ITR\data\output\batches\batch_20260106_133938_7e30806c\encoded\DWT\image_2_DWT.png
+DWT,image_3,Success,0.013,"(300, 300)",C:\Users\faizn\OneDrive\Desktop\Projects\ITR\data\output\batches\batch_20260106_133938_7e30806c\encoded\DWT\image_3_DWT.png
+DWT,image_4,Success,0.02,"(300, 300)",C:\Users\faizn\OneDrive\Desktop\Projects\ITR\data\output\batches\batch_20260106_133938_7e30806c\encoded\DWT\image_4_DWT.png
+DWT,image_5,Success,0.014,"(300, 300)",C:\Users\faizn\OneDrive\Desktop\Projects\ITR\data\output\batches\batch_20260106_133938_7e30806c\encoded\DWT\image_5_DWT.png
