@@ -1,0 +1,79 @@
+{
+  "timestamp": "2026-01-06T14:09:27.030019",
+  "summary": {
+    "total_processed": 5,
+    "total_failed": 0,
+    "methods_used": [
+      "DWT"
+    ],
+    "success": true
+  },
+  "results": {
+    "DWT": [
+      {
+        "filename": "image_1",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\image_1.jpg",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20260106_140926_375ee9e1\\encoded\\DWT\\image_1_DWT.png",
+        "size": [
+          300,
+          300
+        ],
+        "encoding_time": 0.017,
+        "status": "Success"
+      },
+      {
+        "filename": "image_2",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\image_2.jpg",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20260106_140926_375ee9e1\\encoded\\DWT\\image_2_DWT.png",
+        "size": [
+          300,
+          300
+        ],
+        "encoding_time": 0.024,
+        "status": "Success"
+      },
+      {
+        "filename": "image_3",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\image_3.jpg",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20260106_140926_375ee9e1\\encoded\\DWT\\image_3_DWT.png",
+        "size": [
+          300,
+          300
+        ],
+        "encoding_time": 0.017,
+        "status": "Success"
+      },
+      {
+        "filename": "image_4",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\image_4.jpg",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20260106_140926_375ee9e1\\encoded\\DWT\\image_4_DWT.png",
+        "size": [
+          300,
+          300
+        ],
+        "encoding_time": 0.03,
+        "status": "Success"
+      },
+      {
+        "filename": "image_5",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\image_5.jpg",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20260106_140926_375ee9e1\\encoded\\DWT\\image_5_DWT.png",
+        "size": [
+          300,
+          300
+        ],
+        "encoding_time": 0.018,
+        "status": "Success"
+      }
+    ]
+  },
+  "timings": {
+    "DWT": {
+      "min": 0.017,
+      "max": 0.03,
+      "avg": 0.021,
+      "total": 0.106,
+      "count": 5
+    }
+  }
+}

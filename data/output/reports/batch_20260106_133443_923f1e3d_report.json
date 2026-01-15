@@ -1,0 +1,79 @@
+{
+  "timestamp": "2026-01-06T13:34:44.294991",
+  "summary": {
+    "total_processed": 5,
+    "total_failed": 0,
+    "methods_used": [
+      "DCT"
+    ],
+    "success": true
+  },
+  "results": {
+    "DCT": [
+      {
+        "filename": "image_1",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\image_1.jpg",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20260106_133443_923f1e3d\\encoded\\DCT\\image_1_DCT.png",
+        "size": [
+          300,
+          300
+        ],
+        "encoding_time": 0.228,
+        "status": "Success"
+      },
+      {
+        "filename": "image_2",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\image_2.jpg",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20260106_133443_923f1e3d\\encoded\\DCT\\image_2_DCT.png",
+        "size": [
+          300,
+          300
+        ],
+        "encoding_time": 0.202,
+        "status": "Success"
+      },
+      {
+        "filename": "image_3",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\image_3.jpg",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20260106_133443_923f1e3d\\encoded\\DCT\\image_3_DCT.png",
+        "size": [
+          300,
+          300
+        ],
+        "encoding_time": 0.201,
+        "status": "Success"
+      },
+      {
+        "filename": "image_4",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\image_4.jpg",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20260106_133443_923f1e3d\\encoded\\DCT\\image_4_DCT.png",
+        "size": [
+          300,
+          300
+        ],
+        "encoding_time": 0.223,
+        "status": "Success"
+      },
+      {
+        "filename": "image_5",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\image_5.jpg",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20260106_133443_923f1e3d\\encoded\\DCT\\image_5_DCT.png",
+        "size": [
+          300,
+          300
+        ],
+        "encoding_time": 0.193,
+        "status": "Success"
+      }
+    ]
+  },
+  "timings": {
+    "DCT": {
+      "min": 0.193,
+      "max": 0.228,
+      "avg": 0.209,
+      "total": 1.047,
+      "count": 5
+    }
+  }
+}
