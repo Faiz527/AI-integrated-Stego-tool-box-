@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-01-06T13:29:09.235125",
+  "summary": {
+    "total_processed": 0,
+    "total_failed": 0,
+    "methods_used": [
+      "Hybrid DCT"
+    ],
+    "success": true
+  },
+  "results": {
+    "Hybrid DCT": []
+  },
+  "timings": {}
+}

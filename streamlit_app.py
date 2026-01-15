@@ -5,23 +5,22 @@ Image Steganography Web Application.
 Main entry point - orchestrates all UI components.
 """
 
-import streamlit as st
-from pathlib import Path
 import sys
+from pathlib import Path
 
 # Configure base path
 BASE_PATH = Path(__file__).parent.absolute()
-sys.path.append(str(BASE_PATH))
+sys.path.insert(0, str(BASE_PATH))
 
-# Import modules
-from src.db_utils import (
+import streamlit as st
+from src.db.db_utils import (
     initialize_database,
     add_user,
     verify_user,
     log_operation,
     log_activity
 )
-from src.analytics import (
+from src.analytics.stats import (
     create_timeline_chart,
     create_method_pie_chart,
     create_encode_decode_chart,
@@ -30,14 +29,15 @@ from src.analytics import (
     get_activity_dataframe,
     get_statistics_summary
 )
-from src.ui_components import (
+from src.ui.ui_components import (
     show_encode_section,
     show_decode_section,
     show_comparison_section,
     show_statistics_section,
-    show_auth_section
+    show_auth_section,
+    show_batch_processing_section
 )
-from src.styles import apply_dark_theme
+from src.ui.styles import apply_dark_theme
 
 # ============================================================================
 #                           PAGE CONFIGURATION
@@ -57,74 +57,82 @@ st.set_page_config(
 apply_dark_theme()
 
 # ============================================================================
-#                           MAIN APPLICATION
-# ============================================================================
-
-def main():
-    """
-    Main Application Function
-    ==========================
-    Orchestrates the main application flow:
-    - Displays header
-    - Initializes database
-    - Handles login/registration
-    - Routes to appropriate UI section
-    """
-    st.markdown("""
-        <div class="main-header">
-            <h1>🕵️ Image Steganography</h1>
-            <p>Secure Message Hiding using LSB and Hybrid DCT Methods</p>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # Initialize database
-    if not initialize_database():
-        st.stop()
-    
-    # ===== AUTHENTICATION SECTION =====
-    if not st.session_state.get("logged_in", False):
-        show_auth_section()
-    
-    # ===== MAIN APPLICATION (AFTER LOGIN) =====
-    else:
-        # User info and logout
-        col1, col2 = st.columns([0.9, 0.1])
-        with col1:
-            st.write(f"👤 Welcome, **{st.session_state.username}**!")
-        with col2:
-            if st.button("🚪 Logout"):
-                st.session_state.logged_in = False
-                st.session_state.username = None
-                st.rerun()
-        
-        st.divider()
-        
-        # Menu navigation
-        menu = st.radio(
-            "📋 Menu",
-            ["Encode", "Decode", "Comparison", "Statistics"],
-            horizontal=True
-        )
-        
-        # Route to appropriate section
-        if menu == "Encode":
-            show_encode_section()
-        elif menu == "Decode":
-            show_decode_section()
-        elif menu == "Comparison":
-            show_comparison_section()
-        elif menu == "Statistics":
-            show_statistics_section()
-
-
-# ============================================================================
 #                           SESSION STATE INITIALIZATION
 # ============================================================================
 
 if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
+    st.session_state.logged_in = False
+
 if "username" not in st.session_state:
-    st.session_state["username"] = None
+    st.session_state.username = None
+
+if "user_id" not in st.session_state:
+    st.session_state.user_id = None
+
+# ============================================================================
+#                           MAIN APPLICATION
+# ============================================================================
+
+def main():
+    """Main application logic."""
+    
+    # Header
+    st.markdown("""
+        <div style='text-align: center; padding: 20px;'>
+            <h1>🕵️ Image Steganography</h1>
+            <p style='font-size: 18px; color: #8B949E;'>
+                Secure Message Hiding using LSB and Hybrid DCT Methods
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.divider()
+    
+    # Check authentication
+    if not st.session_state.logged_in:
+        # Show authentication interface
+        show_auth_section()
+    else:
+        # Show main application
+        st.sidebar.title(f"👤 {st.session_state.username}")
+        
+        # Logout button
+        if st.sidebar.button("Logout", use_container_width=True):
+            st.session_state.logged_in = False
+            st.session_state.username = None
+            st.rerun()
+        
+        st.sidebar.divider()
+        
+        # Navigation
+        page = st.sidebar.radio(
+            "Navigation",
+            ["🔐 Encode", "🔍 Decode", "📊 Compare Methods", "📈 Statistics", "⚙️ Batch Processing"]
+        )
+        
+        st.sidebar.divider()
+        
+        # Display selected section
+        if page == "🔐 Encode":
+            show_encode_section()
+        elif page == "🔍 Decode":
+            show_decode_section()
+        elif page == "📊 Compare Methods":
+            show_comparison_section()
+        elif page == "📈 Statistics":
+            show_statistics_section()
+        else:  # Batch Processing
+            show_batch_processing_section()
+        
+        # Footer
+        st.divider()
+        st.markdown("""
+            <div style='text-align: center; padding: 20px; color: #8B949E; font-size: 12px;'>
+                <p>Image Steganography Application v1.0</p>
+                <p>Secure message hiding using advanced steganography techniques</p>
+            </div>
+        """, unsafe_allow_html=True)
+
 
 # ============================================================================
 #                           ENTRY POINT

@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-12-13T13:24:41.159443",
+  "summary": {
+    "total_processed": 0,
+    "total_failed": 0,
+    "methods_used": [
+      "Hybrid DWT"
+    ],
+    "success": true
+  },
+  "results": {
+    "Hybrid DWT": []
+  },
+  "timings": {}
+}
