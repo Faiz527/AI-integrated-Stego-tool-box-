@@ -1,0 +1,10 @@
+﻿cryptography
+reedsolo
+pillow
+numpy
+opencv-python
+torch
+torchvision
+scikit-image
+pytest
+streamlit
