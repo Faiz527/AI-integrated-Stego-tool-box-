@@ -163,23 +163,24 @@ def add_user(username: str, password_hash: str) -> bool:
         return False
 
 
-def verify_user(username: str, password_hash: str) -> bool:
+def verify_user(username: str, password_hash: str) -> dict:
     """
-    Verify user credentials.
+    Verify user credentials and return user data.
     
     Args:
         username (str): Username
         password_hash (str): Hashed password
     
     Returns:
-        bool: True if credentials match
+        dict: Dictionary with user_id if credentials match, None otherwise
+              Example: {'user_id': 1, 'username': 'testuser'}
     """
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute(
-            "SELECT id FROM users WHERE username = %s AND password_hash = %s",
+            "SELECT id, username FROM users WHERE username = %s AND password_hash = %s",
             (username, password_hash)
         )
         
@@ -187,11 +188,14 @@ def verify_user(username: str, password_hash: str) -> bool:
         cursor.close()
         conn.close()
         
-        return result is not None
+        if result:
+            return {'user_id': result[0], 'username': result[1]}
+        else:
+            return None
         
     except psycopg2.Error as e:
         logger.error(f"User verification failed: {str(e)}")
-        return False
+        return None
 
 
 def log_operation(user_id: int, method: str, input_image: str, output_image: str,

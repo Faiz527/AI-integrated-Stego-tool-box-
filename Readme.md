@@ -2,13 +2,40 @@
 
 ## Overview
 
-**StegoTool** is a comprehensive, modular steganography framework that enables secure hiding and recovery of secret messages within digital images. It combines multiple advanced techniques including intelligent pixel selection, error correction coding, frequency domain embedding, and robust detection mechanisms to create a resilient steganography system capable of surviving image corruption and compression attacks.
+**StegoTool** is a comprehensive, modular steganography framework that enables secure hiding and recovery of secret messages within digital images. It combines three advanced encoding techniques (LSB, DCT, DWT), intelligent analysis algorithms, and robust error correction to create a resilient steganography system.
 
 The system is designed for:
 - **Secure Communication**: Hide confidential messages within innocent-looking images
 - **Research & Development**: Modular architecture for testing different steganography techniques
 - **Robustness Testing**: Validate message recovery after JPEG compression and other corruptions
-- **Machine Learning Integration**: Train models to optimize pixel selection for maximum security and capacity
+- **Statistical Analysis**: Detect hidden data using advanced stochastic methods
+
+---
+
+## Quick Start
+
+### Prerequisites
+- Python 3.9+
+- PostgreSQL database (for user management and logging)
+- pip package manager
+
+### Installation
+
+1. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Set up the database**
+   - Create a new PostgreSQL database and user
+   - Update `database/config.py` with your database credentials
+   - Run the provided SQL scripts to set up tables and initial data
+
+3. **Run the application**
+   ```bash
+   streamlit run app_streamlit.py
+   ```
+   - Access the web interface at `http://localhost:8501`
 
 ---
 
