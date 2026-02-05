@@ -1,0 +1,68 @@
+{
+  "timestamp": "2025-12-13T13:50:27.246710",
+  "summary": {
+    "total_processed": 4,
+    "total_failed": 0,
+    "methods_used": [
+      "LSB"
+    ],
+    "success": true
+  },
+  "results": {
+    "LSB": [
+      {
+        "filename": "number-1098381_1280",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\number-1098381_1280.png",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20251213_135022_faad7102\\encoded\\LSB\\number-1098381_1280_LSB.png",
+        "size": [
+          905,
+          1280
+        ],
+        "encoding_time": 0.937,
+        "status": "Success"
+      },
+      {
+        "filename": "notes-1136234_1280",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\notes-1136234_1280.png",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20251213_135022_faad7102\\encoded\\LSB\\notes-1136234_1280_LSB.png",
+        "size": [
+          905,
+          1280
+        ],
+        "encoding_time": 1.013,
+        "status": "Success"
+      },
+      {
+        "filename": "banner-2383908_1280",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\banner-2383908_1280.png",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20251213_135022_faad7102\\encoded\\LSB\\banner-2383908_1280_LSB.png",
+        "size": [
+          1280,
+          1280
+        ],
+        "encoding_time": 1.293,
+        "status": "Success"
+      },
+      {
+        "filename": "dialog-boxes-1404149_1280",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\dialog-boxes-1404149_1280.png",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20251213_135022_faad7102\\encoded\\LSB\\dialog-boxes-1404149_1280_LSB.png",
+        "size": [
+          1148,
+          1280
+        ],
+        "encoding_time": 1.113,
+        "status": "Success"
+      }
+    ]
+  },
+  "timings": {
+    "LSB": {
+      "min": 0.937,
+      "max": 1.293,
+      "avg": 1.089,
+      "total": 4.356,
+      "count": 4
+    }
+  }
+}

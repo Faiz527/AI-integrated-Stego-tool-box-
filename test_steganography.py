@@ -9,10 +9,11 @@ import sys
 from pathlib import Path
 from PIL import Image, ImageDraw
 
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent))
 
-from steganography import encode_image, decode_image, encode_dct, decode_dct
-from dwt_steganography import encode_dct_dwt, decode_dct_dwt
+from src.stego.lsb_steganography import encode_image, decode_image
+from src.stego.dct_steganography import encode_dct, decode_dct
+from src.stego.dwt_steganography import encode_dct_dwt, decode_dct_dwt
 
 
 def create_test_image(width=800, height=800, filename="test_image.png"):

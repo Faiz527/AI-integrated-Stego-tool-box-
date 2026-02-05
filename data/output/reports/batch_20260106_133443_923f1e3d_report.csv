@@ -1,0 +1,6 @@
+Method,Filename,Status,Encoding_Time_s,Image_Size,Output_Path
+DCT,image_1,Success,0.228,"(300, 300)",C:\Users\faizn\OneDrive\Desktop\Projects\ITR\data\output\batches\batch_20260106_133443_923f1e3d\encoded\DCT\image_1_DCT.png
+DCT,image_2,Success,0.202,"(300, 300)",C:\Users\faizn\OneDrive\Desktop\Projects\ITR\data\output\batches\batch_20260106_133443_923f1e3d\encoded\DCT\image_2_DCT.png
+DCT,image_3,Success,0.201,"(300, 300)",C:\Users\faizn\OneDrive\Desktop\Projects\ITR\data\output\batches\batch_20260106_133443_923f1e3d\encoded\DCT\image_3_DCT.png
+DCT,image_4,Success,0.223,"(300, 300)",C:\Users\faizn\OneDrive\Desktop\Projects\ITR\data\output\batches\batch_20260106_133443_923f1e3d\encoded\DCT\image_4_DCT.png
+DCT,image_5,Success,0.193,"(300, 300)",C:\Users\faizn\OneDrive\Desktop\Projects\ITR\data\output\batches\batch_20260106_133443_923f1e3d\encoded\DCT\image_5_DCT.png

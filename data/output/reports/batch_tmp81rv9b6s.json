@@ -1,0 +1,94 @@
+{
+  "timestamp": "2025-12-13T00:28:26.012542",
+  "summary": {
+    "total_processed": 6,
+    "total_failed": 0,
+    "methods_used": [
+      "LSB",
+      "Hybrid DCT",
+      "Hybrid DWT"
+    ],
+    "success": true
+  },
+  "results": {
+    "LSB": [
+      {
+        "filename": "7 Longevity Benefits of Raspberries (+ 3 Raspberry Detox Water Recipes) (1)",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\7 Longevity Benefits of Raspberries (+ 3 Raspberry Detox Water Recipes) (1).jpg",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\encoded\\LSB\\7 Longevity Benefits of Raspberries (+ 3 Raspberry Detox Water Recipes) (1)_LSB.png",
+        "size": [
+          350,
+          362
+        ],
+        "encoding_time": 0.121,
+        "status": "Success"
+      },
+      {
+        "filename": "download (4)",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\download (4).jpg",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\encoded\\LSB\\download (4)_LSB.png",
+        "size": [
+          618,
+          900
+        ],
+        "encoding_time": 0.464,
+        "status": "Success"
+      },
+      {
+        "filename": "download (3)",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\download (3).jpg",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\encoded\\LSB\\download (3)_LSB.png",
+        "size": [
+          400,
+          400
+        ],
+        "encoding_time": 0.15,
+        "status": "Success"
+      },
+      {
+        "filename": "download (2)",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\download (2).jpg",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\encoded\\LSB\\download (2)_LSB.png",
+        "size": [
+          735,
+          671
+        ],
+        "encoding_time": 0.434,
+        "status": "Success"
+      },
+      {
+        "filename": "Top Foods to Help Lower Cholesterol",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\Top Foods to Help Lower Cholesterol.jpg",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\encoded\\LSB\\Top Foods to Help Lower Cholesterol_LSB.png",
+        "size": [
+          462,
+          462
+        ],
+        "encoding_time": 0.202,
+        "status": "Success"
+      },
+      {
+        "filename": "I got Strawberry! Which Fruit Matches Your\u2026",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\I got Strawberry! Which Fruit Matches Your\u2026.jpg",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\encoded\\LSB\\I got Strawberry! Which Fruit Matches Your\u2026_LSB.png",
+        "size": [
+          414,
+          414
+        ],
+        "encoding_time": 0.16,
+        "status": "Success"
+      }
+    ],
+    "Hybrid DCT": [],
+    "Hybrid DWT": []
+  },
+  "timings": {
+    "LSB": {
+      "min": 0.121,
+      "max": 0.464,
+      "avg": 0.255,
+      "total": 1.531,
+      "count": 6
+    }
+  }
+}

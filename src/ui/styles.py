@@ -1,6 +1,6 @@
 """
-Styles Module
-=============
+UI Styles Module
+================
 Contains all custom CSS styling for dark mode theme.
 """
 

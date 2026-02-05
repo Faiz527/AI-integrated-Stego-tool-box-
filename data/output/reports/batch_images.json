@@ -1,0 +1,61 @@
+{
+  "timestamp": "2025-12-13T00:13:29.254953",
+  "summary": {
+    "total_processed": 3,
+    "total_failed": 0,
+    "methods_used": [
+      "LSB",
+      "Hybrid DCT",
+      "Hybrid DWT"
+    ],
+    "success": true
+  },
+  "results": {
+    "LSB": [
+      {
+        "filename": "encoded_image (41) - Copy",
+        "input_path": "C:\\Users\\faizn\\AppData\\Local\\Temp\\tmpfzzqc81m\\encoded_image (41) - Copy.png",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\encoded\\LSB\\encoded_image (41) - Copy_LSB.png",
+        "size": [
+          1600,
+          1502
+        ],
+        "encoding_time": 2.43,
+        "status": "Success"
+      },
+      {
+        "filename": "encoded_image (40)",
+        "input_path": "C:\\Users\\faizn\\AppData\\Local\\Temp\\tmpfzzqc81m\\encoded_image (40).png",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\encoded\\LSB\\encoded_image (40)_LSB.png",
+        "size": [
+          4500,
+          4500
+        ],
+        "encoding_time": 17.627,
+        "status": "Success"
+      },
+      {
+        "filename": "encoded_image (38)",
+        "input_path": "C:\\Users\\faizn\\AppData\\Local\\Temp\\tmpfzzqc81m\\encoded_image (38).png",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\encoded\\LSB\\encoded_image (38)_LSB.png",
+        "size": [
+          480,
+          480
+        ],
+        "encoding_time": 0.221,
+        "status": "Success"
+      }
+    ],
+    "Hybrid DCT": [],
+    "Hybrid DWT": []
+  },
+  "timings": {
+    "LSB": {
+      "min": 0.221,
+      "max": 17.627,
+      "avg": 6.759,
+      "total": 20.278,
+      "count": 3
+    }
+  }
+}

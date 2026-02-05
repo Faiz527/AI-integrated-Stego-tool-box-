@@ -1,19 +1,20 @@
 # Image Steganography Application 
 
-A comprehensive web-based image steganography application built with Streamlit that supports multiple steganography methods (LSB, Hybrid DCT, Hybrid DWT) with encryption capabilities and detailed analytics.
+A comprehensive web-based image steganography application built with Streamlit that supports multiple steganography methods (LSB, Hybrid DCT, Hybrid DWT) with encryption capabilities, batch processing, and detailed analytics.
 
 ## 🎯 Features
 
 ### Steganography Methods
-- **LSB (Least Significant Bit)**: Spatial domain steganography with filter support
+- **LSB (Least Significant Bit)**: Spatial domain steganography with fast processing
 - **Hybrid DCT (Discrete Cosine Transform)**: Frequency domain method using Y-channel
 - **Hybrid DWT (Discrete Wavelet Transform)**: Wavelet-based encoding using Haar wavelets
 
 ### Core Functionality
 - ✅ **Message Encoding**: Hide secret messages in images using three different methods
 - ✅ **Message Decoding**: Extract hidden messages from encoded images
-- ✅ **Encryption**: AES-256 encryption for secure message protection
+- ✅ **Encryption**: Message protection with SHA-256 key derivation
 - ✅ **Method Comparison**: Side-by-side comparison of all three steganography methods
+- ✅ **Batch Processing**: Encode/decode multiple images efficiently
 - ✅ **Real-time Analytics**: Track operations and view detailed statistics
 
 ### Analytics Dashboard
@@ -25,20 +26,21 @@ A comprehensive web-based image steganography application built with Streamlit t
 - 📋 **Activity Log**: Real-time log of recent user operations
 
 ### User Management
-- User authentication with password hashing
+- User authentication with SHA-256 password hashing
 - Per-user operation tracking
 - Activity logging and statistics
+- Session management
 
 ---
 
 ## 🛠️ Installation
 
 ### Prerequisites
-- **Python 3.8+**
+- **Python 3.8+** (Python 3.10+ recommended)
 - **PostgreSQL 9.1+** (for database operations)
 - **pip** (Python package manager)
 
-### Setup Instructions
+### Quick Start
 
 1. **Clone or Download the Project**
 ```bash
@@ -77,7 +79,7 @@ python create_db.py
 
 6. **Initialize Database Tables**
 ```bash
-python -c "from src.db_utils import initialize_database; initialize_database()"
+python -c "from src.db.db_utils import initialize_database; initialize_database()"
 ```
 
 7. **Test Database Connection**
@@ -114,16 +116,83 @@ ITR/
 ├── test_db.py                  # Database connection test
 ├── test_steganography.py       # Steganography methods test
 ├── src/
-│   ├── __init__.py
-│   ├── analytics.py            # Statistics and charting functions
-│   ├── db_utils.py             # Database operations (PostgreSQL)
-│   ├── steganography.py        # LSB steganography implementation
-│   ├── dwt_steganography.py    # DWT steganography implementation
-│   ├── encryption.py           # AES-256 encryption/decryption
-│   ├── styles.py               # Streamlit styling and theming
-│   └── ui_components.py        # UI components and sections
+│   ├── __init__.py             # Main package initialization
+│   │
+│   ├── stego/                  # Core Steganography Engine
+│   │   ├── __init__.py
+│   │   ├── lsb_steganography.py        # LSB (Spatial Domain) method
+│   │   ├── dct_steganography.py        # Hybrid DCT (Y-Channel) method
+│   │   └── dwt_steganography.py        # Hybrid DWT (Haar Wavelet) method
+│   │
+│   ├── db/                     # Database Layer
+│   │   ├── __init__.py
+│   │   └── db_utils.py         # User management, operation logging, statistics
+│   │
+│   ├── analytics/              # Analytics & Statistics
+│   │   ├── __init__.py
+│   │   └── stats.py            # Chart generation, statistics calculations
+│   │
+│   ├── encryption/             # Encryption Module
+│   │   ├── __init__.py
+│   │   └── encryption.py       # XOR cipher with SHA-256 key derivation
+│   │
+│   ├── ui/                     # User Interface
+│   │   ├── __init__.py
+│   │   ├── styles.py           # Dark theme styling & CSS
+│   │   └── ui_components.py    # Streamlit UI sections (encode, decode, etc.)
+│   │
+│   ├── batch_processing/       # Batch processing module
+│   │   ├── __init__.py
+│   │   ├── batch_encode.py     # Batch encoding functions
+│   │   └── batch_decode.py     # Batch decoding functions
+│   │
+│   └── utils/                  # Utility functions
+│       ├── __init__.py
+│       └── file_utils.py       # File handling and validation
+│
 └── .venv/                      # Python virtual environment
 ```
+
+### Module Organization
+
+**`src/stego/`** - Steganography Engine
+- Independent implementations of LSB, DCT, and DWT methods
+- Each method has encode/decode functions
+- No external dependencies between methods
+
+**`src/db/`** - Database Layer
+- PostgreSQL connection management
+- User authentication with SHA-256 password hashing
+- Operation logging (encode/decode history)
+- Statistics retrieval for analytics
+
+**`src/analytics/`** - Analytics & Visualization
+- Chart generation (Plotly)
+- Statistics calculations
+- Activity logs and dataframes
+- Real-time metrics
+
+**`src/encryption/`** - Message Security
+- XOR cipher with SHA-256 key derivation
+- Symmetric encryption/decryption
+- Optional message protection
+
+**`src/ui/`** - Web Interface
+- Streamlit UI components
+- Dark theme styling
+- Authentication section
+- Encode/Decode sections
+- Comparison and Statistics sections
+
+**`src/batch_processing/`** - Batch Processing Module
+- Batch encoding and decoding functions
+- File validation and error handling
+- Integration with core steganography engine
+
+**`src/utils/`** - Utility Functions
+- File handling and validation
+- Logging and configuration management
+- Helper functions for common tasks
 
 ---
 
@@ -167,6 +236,13 @@ ITR/
 - View data size distribution
 - See recent activity log
 
+### 6. **Batch Processing**
+- Go to **Batch Processing** tab
+- Select folder with images for encoding/decoding
+- Choose steganography method and encryption options
+- Click "Start Batch Processing"
+- Download link for processed images will be provided
+
 ---
 
 ## 🔧 Technical Details
@@ -195,10 +271,10 @@ ITR/
 - **Quality**: Very Good (PSNR > 45 dB)
 
 ### Encryption
-- **Algorithm**: AES-256 (Advanced Encryption Standard)
-- **Mode**: CBC (Cipher Block Chaining)
-- **Key Derivation**: PBKDF2 with SHA-256
-- **IV**: Random 16-byte initialization vector
+- **Algorithm**: XOR cipher with SHA-256 key derivation
+- **Key Size**: 256-bit (derived from password)
+- **Security**: Suitable for steganography; recommended AES-256 for highly sensitive data
+- **Performance**: Very fast (negligible overhead)
 
 ### Database Schema
 
@@ -248,18 +324,25 @@ python test_db.py
 
 ## ⚙️ Configuration
 
-### Streamlit Configuration (`config.toml`)
+### Streamlit Configuration (`.streamlit/config.toml`)
 ```toml
 [theme]
 primaryColor = "#238636"
-backgroundColor = "#0D1117"
+backgroundColor = "#0E1117"
 secondaryBackgroundColor = "#161B22"
 textColor = "#C9D1D9"
 font = "sans serif"
 
+[client]
+showErrorDetails = true
+showWarningOnDirectExecution = true
+
+[logger]
+level = "info"
+
 [server]
-headless = true
 port = 8501
+headless = true
 ```
 
 ### Environment Variables (`.env`)
@@ -269,6 +352,18 @@ DB_PORT=5432                   # PostgreSQL port
 DB_NAME=stegnography           # Database name
 DB_USER=postgres               # PostgreSQL username
 DB_PASSWORD=your_password      # PostgreSQL password
+```
+
+### Secrets Configuration (`.streamlit/secrets.toml`)
+Optional for cloud deployments:
+```toml
+[postgres]
+host = "your_host"
+port = "5432"
+dbname = "your_db"
+user = "your_user"
+password = "your_password"
+sslmode = "require"
 ```
 
 ---
@@ -348,15 +443,42 @@ This project is provided as-is for educational purposes.
 ## 🚀 Future Enhancements
 
 Potential improvements:
-- [ ] Support for additional image formats (BMP, TIFF, etc.)
+- [ ] Quality Metrics Module - PSNR, MSE, SSIM calculations
+- [ ] Auto-detection Module - Automatically select best method per image
+- [ ] Additional image formats (BMP, TIFF, WebP, etc.)
 - [ ] Video steganography support
 - [ ] Real-time image preview during encoding
-- [ ] Batch processing of multiple images
+- [ ] Report generation (PDF, CSV, JSON)
 - [ ] Advanced steganalysis detection
-- [ ] Cloud storage integration
+- [ ] Cloud storage integration (AWS S3, Google Drive)
 - [ ] Mobile app support
 - [ ] Docker containerization
-- [ ] Distributed computing for large images
+- [ ] Distributed computing for large-scale batch processing
+
+---
+
+## 📚 Module Development Guide
+
+### Adding New Steganography Method
+
+1. Create new file in `src/stego/` (e.g., `new_method_steganography.py`)
+2. Implement `encode_method(img, secret_text)` and `decode_method(img)`
+3. Export functions in `src/stego/__init__.py`
+4. Add UI section in `src/ui/ui_components.py`
+5. Update imports in `streamlit_app.py`
+
+### Adding New Chart/Statistic
+
+1. Create function in `src/analytics/stats.py`
+2. Export in `src/analytics/__init__.py`
+3. Import in `src/ui/ui_components.py`
+4. Add UI element in `show_statistics_section()`
+
+### Database Operations
+
+1. Add function in `src/db/db_utils.py`
+2. Export in `src/db/__init__.py`
+3. Call from appropriate UI component
 
 ---
 
@@ -370,4 +492,6 @@ For issues or questions:
 
 ---
 
-**Last Updated**: November 27, 2025
+**Last Updated**: December 2, 2025
+**Project Structure**: Modular Architecture v1.0
+**Latest Changes**: Refactored into modular packages (stego, db, analytics, encryption, ui)

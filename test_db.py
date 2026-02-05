@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.db_utils import get_db_connection, initialize_database, add_user, verify_user
+from src.db.db_utils import get_db_connection, initialize_database, add_user, verify_user
 
 print("🔌 Testing database connection...\n")
 

@@ -1,0 +1,79 @@
+{
+  "timestamp": "2026-01-06T13:16:47.999948",
+  "summary": {
+    "total_processed": 5,
+    "total_failed": 0,
+    "methods_used": [
+      "LSB"
+    ],
+    "success": true
+  },
+  "results": {
+    "LSB": [
+      {
+        "filename": "image_1",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\image_1.png",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20260106_131647_9bc69bf9\\encoded\\LSB\\image_1_LSB.png",
+        "size": [
+          300,
+          300
+        ],
+        "encoding_time": 0.073,
+        "status": "Success"
+      },
+      {
+        "filename": "image_2",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\image_2.png",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20260106_131647_9bc69bf9\\encoded\\LSB\\image_2_LSB.png",
+        "size": [
+          300,
+          300
+        ],
+        "encoding_time": 0.055,
+        "status": "Success"
+      },
+      {
+        "filename": "image_3",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\image_3.png",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20260106_131647_9bc69bf9\\encoded\\LSB\\image_3_LSB.png",
+        "size": [
+          300,
+          300
+        ],
+        "encoding_time": 0.063,
+        "status": "Success"
+      },
+      {
+        "filename": "image_4",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\image_4.png",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20260106_131647_9bc69bf9\\encoded\\LSB\\image_4_LSB.png",
+        "size": [
+          300,
+          300
+        ],
+        "encoding_time": 0.064,
+        "status": "Success"
+      },
+      {
+        "filename": "image_5",
+        "input_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\input\\images\\image_5.png",
+        "output_path": "C:\\Users\\faizn\\OneDrive\\Desktop\\Projects\\ITR\\data\\output\\batches\\batch_20260106_131647_9bc69bf9\\encoded\\LSB\\image_5_LSB.png",
+        "size": [
+          300,
+          300
+        ],
+        "encoding_time": 0.066,
+        "status": "Success"
+      }
+    ]
+  },
+  "timings": {
+    "LSB": {
+      "min": 0.055,
+      "max": 0.073,
+      "avg": 0.064,
+      "total": 0.321,
+      "count": 5
+    }
+  }
+}

@@ -13,6 +13,8 @@ pyarrow==21.0.0
 pillow==11.3.0
 scipy==1.15.3
 PyWavelets==1.8.0
+opencv-python
+scikit-image
 
 # Database
 psycopg2-binary==2.9.11
@@ -21,6 +23,7 @@ python-dotenv==1.1.1
 # Security & Cryptography
 cryptography==46.0.2
 pycparser==2.23
+reedsolo
 
 # Utilities
 python-dateutil==2.9.0.post0
@@ -37,3 +40,8 @@ tornado==6.5.2
 protobuf==6.32.1
 cachetools==6.2.0
 attrs==25.4.0
+
+# Testing
+pytest
+torch
+torchvision
