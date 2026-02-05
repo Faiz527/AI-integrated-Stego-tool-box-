@@ -43,7 +43,8 @@ from src.ui.ui_components import (
     show_batch_processing_section,
     show_pixel_selector_section,
     show_steg_detector_section,
-    show_redundancy_section
+    show_redundancy_section,
+    show_watermarking_section
 )
 from src.ui.styles import apply_dark_theme
 
@@ -76,6 +77,18 @@ if "username" not in st.session_state:
 
 if "user_id" not in st.session_state:
     st.session_state.user_id = None
+
+# Initialize current page in session state
+if "current_page" not in st.session_state:
+    st.session_state.current_page = "🔐 Encode"
+
+# ============================================================================
+#                           NAVIGATION HELPER
+# ============================================================================
+
+def set_page(page_name):
+    """Set the current page in session state."""
+    st.session_state.current_page = page_name
 
 # ============================================================================
 #                           MAIN APPLICATION
@@ -113,24 +126,35 @@ def main():
         
         st.sidebar.divider()
         
-        # Navigation
-        page = st.sidebar.radio(
-            "Navigation",
-            [
-                "🔐 Encode", 
-                "🔍 Decode", 
-                "📊 Compare Methods", 
-                "📈 Statistics", 
-                "🎯 Pixel Selector",
-                "🔍 Detect Stego",
-                "🛡️ Error Correction",
-                "⚙️ Batch Processing"
-            ]
-        )
+        # Navigation label
+        st.sidebar.markdown("### Navigation")
+        
+        # Define navigation items
+        nav_items = [
+            ("🔐 Encode", "encode"),
+            ("🔍 Decode", "decode"),
+            ("📊 Compare Methods", "compare"),
+            ("📈 Statistics", "stats"),
+            ("🎯 Pixel Selector", "pixel"),
+            ("🔍 Detect Stego", "detect"),
+            ("🛡️ Error Correction", "ecc"),
+            ("💧 Watermarking", "watermark"),
+            ("⚙️ Batch Processing", "batch")
+        ]
+        
+        # Create navigation buttons
+        for label, key in nav_items:
+            # Highlight the active button
+            button_type = "primary" if st.session_state.current_page == label else "secondary"
+            if st.sidebar.button(label, key=f"nav_{key}", use_container_width=True, type=button_type):
+                set_page(label)
+                st.rerun()
         
         st.sidebar.divider()
         
-        # Display selected section
+        # Display selected section based on current_page
+        page = st.session_state.current_page
+        
         if page == "🔐 Encode":
             show_encode_section()
         elif page == "🔍 Decode":
@@ -145,6 +169,8 @@ def main():
             show_steg_detector_section()
         elif page == "🛡️ Error Correction":
             show_redundancy_section()
+        elif page == "💧 Watermarking":
+            show_watermarking_section()
         else:  # Batch Processing
             show_batch_processing_section()
         

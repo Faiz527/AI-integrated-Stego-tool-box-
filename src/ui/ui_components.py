@@ -1279,3 +1279,439 @@ def is_valid_message(text):
     
     # At least 70% should be printable
     return (printable_count / len(text)) >= 0.7
+
+
+# ============================================================================
+#                    MODULE 6: ERROR CORRECTION & REDUNDANCY
+# ============================================================================
+
+def show_redundancy_section():
+    """Display error correction and redundancy features."""
+    st.subheader("🛡️ Module 6: Error Correction & Redundancy")
+    
+    st.markdown("""
+    This module adds redundancy to your messages using Reed-Solomon error correction.
+    This allows recovery of messages even if the image gets corrupted or compressed.
+    """)
+    
+    st.divider()
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### Step 1: Upload Image & Message")
+        
+        image_file = create_file_uploader(file_type="images", key="redundancy_img")
+        if image_file:
+            try:
+                image = Image.open(image_file)
+                st.image(image, caption="Your Image", use_container_width=True)
+                img_width, img_height = image.size
+                st.caption(f"Image size: {img_width}×{img_height}")
+            except Exception as e:
+                show_error(f"Error loading image: {str(e)}")
+        
+        message = create_text_area(
+            label="Message to protect",
+            max_chars=5000
+        )
+    
+    with col2:
+        st.markdown("### Step 2: Configure ECC")
+        
+        ecc_strength = st.slider(
+            "Error correction strength (parity bytes)",
+            min_value=8,
+            max_value=128,
+            value=32,
+            step=8,
+            help="More parity = can recover from more corruption, but needs more space"
+        )
+        
+        lsb_bits = st.selectbox(
+            "LSB bits to use",
+            [1, 2, 4],
+            index=0,
+            help="1 = most robust, 4 = more capacity"
+        )
+        
+        st.info(f"""
+        **Configuration Summary:**
+        - **Parity Bytes:** {ecc_strength}
+        - **Can recover from:** ~{ecc_strength//2} byte errors
+        - **Overhead:** ~{(ecc_strength / (len(message) if message else 100)) * 100:.1f}% of message size
+        """)
+    
+    st.divider()
+    st.markdown("### Capacity Check")
+    
+    if image_file and message:
+        try:
+            from stegotool.modules.module6_redundancy.capacity_checker import can_fit_payload
+            
+            img = Image.open(image_file)
+            img_size = img.size
+            channels = 3 if img.mode == 'RGB' else 4 if img.mode == 'RGBA' else 1
+            
+            message_bytes = len(message.encode())
+            fits, available = can_fit_payload(
+                img_size,
+                message_bytes,
+                nsym=ecc_strength,
+                channels=channels,
+                lsb_bits=lsb_bits
+            )
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Message Size", f"{message_bytes} B")
+            with col2:
+                st.metric("Parity Bytes", ecc_strength)
+            with col3:
+                st.metric("Total Required", f"{message_bytes + ecc_strength} B")
+            with col4:
+                st.metric("Available", f"{available} B")
+            
+            if fits:
+                st.success(f"✅ Message with ECC will fit! ({available - (message_bytes + ecc_strength)} bytes spare)")
+            else:
+                st.error(f"❌ Message too large! Need {(message_bytes + ecc_strength) - available} more bytes")
+        
+        except Exception as e:
+            logger.warning(f"Could not calculate capacity: {str(e)}")
+    
+    st.divider()
+    st.markdown("### Step 3: Test Corruption Recovery")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        corruption_type = st.selectbox(
+            "Simulate corruption type",
+            ["🖼️ JPEG Recompression", "🔀 Random Bit Flips", "📉 Noise Addition"],
+            help="Test how well the ECC recovers from different types of damage"
+        )
+        
+        if corruption_type == "🖼️ JPEG Recompression":
+            jpeg_quality = st.slider("JPEG Quality", 20, 95, 70)
+        elif corruption_type == "🔀 Random Bit Flips":
+            bit_flips = st.slider("Number of byte flips", 1, 20, 5)
+        else:
+            noise_level = st.slider("Noise level (0-255)", 1, 50, 10)
+    
+    with col2:
+        st.markdown("### Recovery Success Rate")
+        st.info("Shows how well the error correction recovers the original message after corruption")
+    
+    col1, col2, col3 = st.columns(3)
+    with col2:
+        if image_file and message and st.button("🔧 Test ECC Recovery", use_container_width=True, type="primary"):
+            try:
+                with st.spinner("Testing error correction..."):
+                    from stegotool.modules.module6_redundancy.rs_wrapper import add_redundancy, recover_redundancy
+                    from stegotool.modules.module6_redundancy.corruption_simulator import random_byte_flips, recompress_and_reload
+                    
+                    # Encode message with redundancy
+                    message_bytes = message.encode()
+                    encoded_with_ecc = add_redundancy(message_bytes, nsym=ecc_strength)
+                    
+                    st.divider()
+                    st.markdown("### ✅ Test Results")
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown("**Original Message**")
+                        st.code(message[:100] + ("..." if len(message) > 100 else ""))
+                        st.caption(f"Size: {len(message_bytes)} bytes")
+                    
+                    with col2:
+                        st.markdown("**After ECC Encoding**")
+                        st.code(f"{len(encoded_with_ecc)} bytes")
+                        overhead = (len(encoded_with_ecc) - len(message_bytes)) / len(message_bytes) * 100
+                        st.caption(f"Overhead: +{overhead:.1f}%")
+                    
+                    st.divider()
+                    
+                    # Simulate corruption
+                    try:
+                        if corruption_type == "🖼️ JPEG Recompression":
+                            st.markdown(f"**Simulating JPEG compression (Q={jpeg_quality})**")
+                            corrupted = random_byte_flips(encoded_with_ecc, n_flips=max(1, len(encoded_with_ecc)//50), seed=42)
+                            corruption_desc = f"JPEG quality reduced to {jpeg_quality}"
+                        elif corruption_type == "🔀 Random Bit Flips":
+                            st.markdown(f"**Simulating {bit_flips} byte flips**")
+                            corrupted = random_byte_flips(encoded_with_ecc, n_flips=bit_flips, seed=42)
+                            corruption_desc = f"{bit_flips} random bytes flipped"
+                        else:
+                            st.markdown(f"**Simulating noise level {noise_level}**")
+                            corrupted = random_byte_flips(encoded_with_ecc, n_flips=max(1, len(encoded_with_ecc)//20), seed=42)
+                            corruption_desc = f"Noise added (level {noise_level})"
+                        
+                        # Count errors
+                        error_count = sum(bin(a ^ b).count('1') for a, b in zip(encoded_with_ecc, corrupted))
+                        error_bytes = sum(1 for a, b in zip(encoded_with_ecc, corrupted) if a != b)
+                        
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Corruption Type", corruption_desc[:15])
+                        with col2:
+                            st.metric("Byte Errors", error_bytes)
+                        with col3:
+                            st.metric("Bit Errors", error_count)
+                        
+                        st.divider()
+                        
+                        # Try recovery
+                        try:
+                            recovered_message = recover_redundancy(corrupted, nsym=ecc_strength)
+                            
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                st.markdown("**Recovery Status**")
+                                st.success("✅ Message recovered successfully!")
+                                
+                                if recovered_message == message_bytes:
+                                    st.success("🎯 Recovered message matches original perfectly!")
+                                    recovery_rate = 100
+                                else:
+                                    st.warning("⚠️ Message recovered but contains differences")
+                                    recovery_rate = (len([a for a, b in zip(message_bytes, recovered_message) if a == b]) / len(message_bytes)) * 100 if message_bytes else 0
+                            
+                            with col2:
+                                st.markdown("**Recovered Message**")
+                                st.code(recovered_message.decode(errors='replace')[:100])
+                                st.metric("Recovery Rate", f"{recovery_rate:.1f}%")
+                            
+
+                            show_success(f"ECC successfully recovered message with {ecc_strength} parity bytes!")
+                            
+                        except Exception as recovery_error:
+                            st.error(f"❌ Recovery failed: {str(recovery_error)}")
+                            st.markdown("""
+                            **Why recovery failed:**
+                            - Too many errors for the chosen parity bytes
+                            - Try increasing parity bytes (e.g., 64 instead of 32)
+                            - The error correction can fix up to ~{} bytes of errors
+                            """.format(ecc_strength // 2))
+                    
+                    except Exception as corruption_error:
+                        show_error(f"Corruption simulation error: {str(corruption_error)}")
+                        
+            except Exception as e:
+                show_error(f"ECC test error: {str(e)}")
+                logger.error(f"Redundancy test error: {str(e)}")
+    
+    show_info_box(
+        "Error Correction & Redundancy (Module 6)",
+        """
+        This advanced module protects your messages from corruption. Even if the image gets
+        compressed, recompressed, or damaged, the error correction can recover the original message.
+        Uses Reed-Solomon codes for maximum protection.
+        """,
+        [
+            "Recover messages from corrupted or compressed images",
+            "Add redundancy to protect against JPEG recompression",
+            "Test error correction strength before embedding",
+            "Choose parity bytes based on expected corruption level",
+            "Perfect for long-term storage or unreliable channels"
+        ]
+    )
+
+# ============================================================================
+#                           WATERMARKING SECTION
+# ============================================================================
+
+def show_watermarking_section():
+    """
+    Display the Watermarking interface.
+    
+    Currently supports:
+    1. Text-based Watermark (Visible) - Fully implemented
+    """
+    st.subheader("💧 Watermarking")
+    
+    st.markdown("""
+    Add visible text watermarks to your images to protect your intellectual property 
+    or mark ownership. Perfect for copyright notices and branding.
+    """)
+    
+    st.divider()
+    
+    # Show the text watermark UI directly (no radio buttons needed)
+    _show_text_watermark_ui()
+    
+    # ========================================================================
+    # HELP SECTION
+    # ========================================================================
+    
+    show_info_box(
+        "Image Watermarking",
+        """
+        Watermarking is a technique used to embed identifying information into images.
+        This can be used for copyright protection, ownership verification, or branding.
+        The text watermark overlays visible text onto your image.
+        """,
+        [
+            "Add copyright notices to protect your work",
+            "Brand images with your name or company",
+            "Customize text color, size, position, and opacity",
+            "Works with PNG, JPG, and other image formats",
+            "Download watermarked images in PNG format"
+        ]
+    )
+
+
+def _show_text_watermark_ui():
+    """
+    Display the UI for text-based visible watermarking.
+    This is the fully implemented watermarking option.
+    """
+    st.markdown("### 📝 Text-based Watermark (Visible)")
+    
+    st.info("""
+    **How it works:** This method overlays text directly onto your image.
+    The watermark is visible to anyone viewing the image, making it ideal for
+    copyright notices, branding, or ownership claims.
+    """)
+    
+    # Create two columns for layout
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("#### Upload Your Image")
+        image_file = create_file_uploader(file_type="images", key="watermark_image_upload")
+        
+        if image_file:
+            try:
+                original_image = Image.open(image_file)
+                st.image(original_image, caption="Original Image", use_container_width=True)
+            except Exception as e:
+                show_error(f"Error loading image: {str(e)}")
+    
+    with col2:
+        st.markdown("#### Watermark Settings")
+        
+        # Watermark text input
+        watermark_text = st.text_input(
+            "Watermark Text",
+            value="© Your Name",
+            placeholder="Enter your watermark text",
+            max_chars=200,
+            help="The text that will appear on your image"
+        )
+        
+        # Font size slider
+        font_size = st.slider(
+            "Font Size",
+            min_value=10,
+            max_value=100,
+            value=30,
+            step=5,
+            help="Adjust the size of the watermark text"
+        )
+        
+        # Position selector
+        position = st.selectbox(
+            "Position",
+            options=["top-left", "center", "bottom-right"],
+            index=2,  # Default to bottom-right
+            help="Where to place the watermark on the image"
+        )
+        
+        # Opacity slider
+        opacity = st.slider(
+            "Opacity",
+            min_value=50,
+            max_value=255,
+            value=180,
+            step=10,
+            help="How visible the watermark should be (255 = fully opaque)"
+        )
+        
+        # Text color picker
+        text_color_hex = st.color_picker(
+            "Text Color",
+            value="#FFFFFF",
+            help="Choose the color of your watermark text"
+        )
+        
+        # Convert hex color to RGB tuple
+        text_color = tuple(int(text_color_hex.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+    
+    st.divider()
+    
+    # ========================================================================
+    # APPLY WATERMARK BUTTON
+    # ========================================================================
+    
+    col1, col2, col3 = st.columns(3)
+    with col2:
+        apply_button = st.button(
+            "💧 Apply Watermark",
+            use_container_width=True,
+            type="primary",
+            disabled=not image_file
+        )
+    
+    if apply_button:
+        if not image_file:
+            show_error("Please upload an image first")
+        elif not watermark_text or watermark_text.strip() == "":
+            show_error("Please enter watermark text")
+        else:
+            try:
+                with st.spinner("Applying watermark..."):
+                    # Import the watermarking function
+                    from src.watermark.watermark import apply_text_watermark
+                    
+                    # Load the original image
+                    original_image = Image.open(image_file)
+                    
+                    # Apply the watermark
+                    watermarked_image = apply_text_watermark(
+                        image=original_image,
+                        watermark_text=watermark_text,
+                        font_size=font_size,
+                        position=position,
+                        text_color=text_color,
+                        opacity=opacity
+                    )
+                    
+                    st.divider()
+                    st.markdown("### ✅ Watermark Applied Successfully!")
+                    
+                    # Display before and after
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.image(original_image, caption="Original Image", use_container_width=True)
+                    with col2:
+                        st.image(watermarked_image, caption="Watermarked Image", use_container_width=True)
+                    
+                    # Download button
+                    buf = BytesIO()
+                    watermarked_image.save(buf, format="PNG")
+                    buf.seek(0)
+                    
+                    st.download_button(
+                        label="⬇️ Download Watermarked Image",
+                        data=buf.getvalue(),
+                        file_name="watermarked_image.png",
+                        mime="image/png",
+                        use_container_width=True
+                    )
+                    
+                    # Log activity if user is logged in
+                    if hasattr(st.session_state, 'user_id') and st.session_state.user_id:
+                        log_activity(
+                            st.session_state.user_id,
+                            "WATERMARK",
+                            f"Applied text watermark: '{watermark_text[:30]}...'"
+                        )
+                    
+                    show_success("Watermark has been applied to your image!")
+                    
+            except Exception as e:
+                show_error(f"Error applying watermark: {str(e)}")
+                logger.error(f"Watermark error: {str(e)}")
