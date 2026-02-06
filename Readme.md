@@ -162,7 +162,8 @@ ITR/
 │   │   ├── __init__.py
 │   │   ├── batch_encoder.py        # Batch encoding operations
 │   │   ├── controller.py           # Batch processing controller
-│   │   ├── zip_handler.py          # ZIP archive handling
+│   │   ├── packet_handler.py       # Message packetization for distributed steganography
+│   │   ├── zip_handler.py          # ZIP archive extraction and validation
 │   │   └── report_generator.py     # Report generation (JSON/CSV)
 │   │
 │   └── ui/                         # 🎨 User Interface Components
@@ -256,9 +257,11 @@ ITR/
 - Comparison, Statistics, and Watermarking sections
 
 **`src/batch_processing/`** - Batch Processing Module
-- Batch encoding and decoding functions
-- File validation and error handling
-- Integration with core steganography engine
+- **batch_encoder.py**: Batch encoding with two modes (Uniform/Packetized)
+- **controller.py**: Orchestrates batch workflow (ZIP extraction, validation, encoding, reporting)
+- **packet_handler.py**: Message packetization for distributed steganography
+- **zip_handler.py**: ZIP archive extraction and validation
+- **report_generator.py**: JSON/CSV report generation with timing benchmarks
 
 ---
 
@@ -333,10 +336,23 @@ ITR/
 
 ### 10. **Batch Processing**
 - Go to **Batch Processing** tab
-- Select folder with images for encoding/decoding
-- Choose steganography method and encryption options
-- Click "Start Batch Processing"
-- Download link for processed images will be provided
+- Choose between **Encode** or **Decode** sub-tabs
+
+#### Batch Encode
+- **Basic Mode (Uniform)**: Same message embedded in all images
+  - Each image can be decoded independently
+  - Good for distributing the same secret to multiple recipients
+- **Advanced Mode (Packetized)**: Message split across images
+  - Message is divided into packets, one per image
+  - ALL images required to reconstruct the original message
+  - More secure - single image reveals nothing useful
+
+#### Batch Decode
+- Upload ZIP file or multiple images
+- System auto-detects encoding mode (Basic vs Advanced)
+- For Basic Mode: Each message displayed separately
+- For Advanced Mode: Reconstructs complete message from all packets
+- Supports encrypted message decryption
 
 ---
 
@@ -611,6 +627,6 @@ For issues or questions:
 
 ---
 
-**Last Updated**: February 5, 2026
+**Last Updated**: February 6, 2026
 **Project Structure**: Modular Architecture v2.0
-**Latest Changes**: Added Watermarking module with text-based visible watermarks
+**Latest Changes**: Fixed batch decode to display decoded messages, added is_packetized_message function
