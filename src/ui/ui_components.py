@@ -32,6 +32,17 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================================
+#                    HELPER FUNCTION: MESSAGE VALIDATION
+# ============================================================================
+
+def is_valid_message(message):
+    """Validate if extracted message is valid (non-empty string)."""
+    if not isinstance(message, str):
+        return False
+    return len(message.strip()) > 0
+
+
+# ============================================================================
 #                    HELPER FUNCTION: INFO BOXES
 # ============================================================================
 
@@ -57,7 +68,6 @@ def show_info_box(title, description, use_cases):
 # ============================================================================
 #                           AUTHENTICATION SECTION
 # ============================================================================
-
 def show_auth_section():
     """Display authentication interface (login/register)."""
     st.subheader(SECTION_HEADERS["auth"])
@@ -156,7 +166,6 @@ def show_register_form():
 # ============================================================================
 #                           ENCODE SECTION (UPDATED)
 # ============================================================================
-
 def show_encode_section():
     """Display encoding interface."""
     st.subheader(SECTION_HEADERS["encode"])
@@ -302,7 +311,6 @@ def show_encode_section():
 # ============================================================================
 #                           DECODE SECTION (UPDATED)
 # ============================================================================
-
 def show_decode_section():
     """Display decoding interface."""
     st.subheader(SECTION_HEADERS["decode"])
@@ -428,7 +436,6 @@ def show_decode_section():
 # ============================================================================
 #                           COMPARISON SECTION (FIXED)
 # ============================================================================
-
 def show_comparison_section():
     """Display method comparison interface."""
     st.subheader(SECTION_HEADERS["comparison"])
@@ -521,7 +528,6 @@ def show_comparison_section():
 # ============================================================================
 #                           STATISTICS SECTION (FIXED)
 # ============================================================================
-
 def show_statistics_section():
     """Display statistics and analytics."""
     st.subheader(SECTION_HEADERS["statistics"])
@@ -636,237 +642,694 @@ def show_statistics_section():
 # ============================================================================
 #                           BATCH PROCESSING SECTION
 # ============================================================================
-
 def show_batch_processing_section():
     """Display batch processing interface."""
     st.subheader(SECTION_HEADERS["batch"])
     
     st.markdown("### Process Multiple Images at Once")
     
-    batch_mode = st.radio("Select operation", ["⏱️ Batch Encode", "🔍 Batch Decode"], horizontal=True)
+    batch_mode = st.radio("Select operation", ["📤 Batch Encode", "📥 Batch Decode"], horizontal=True)
     
     st.divider()
     
-    if batch_mode == "⏱️ Batch Encode":
+    if batch_mode == "📤 Batch Encode":
         show_batch_encode()
     else:
         show_batch_decode()
 
 
 def show_batch_encode():
-    """Display batch encoding interface."""
+    """Display batch encoding interface with Basic and Advanced modes."""
     st.markdown("### Batch Image Encoding")
     
+    # ========================================================================
+    # MODE SELECTION - Basic vs Advanced
+    # ========================================================================
+    
+    st.markdown("#### Select Encoding Mode")
+    
+    encoding_mode = st.radio(
+        "Choose how to embed your message:",
+        options=[
+            "🔄 Basic Mode - Same message in ALL images (each image independently decodable)",
+            "📦 Advanced Mode - Split message across images (ALL images required to decode)"
+        ],
+        index=0,
+        horizontal=False,
+        key="batch_encoding_mode"
+    )
+    
+    is_advanced_mode = "Advanced" in encoding_mode
+    
+    # Show mode explanation
+    if is_advanced_mode:
+        st.info("""
+        **📦 Advanced Mode (Packetized Message Distribution)**
+        - Your message will be **split into equal packets**
+        - Each image receives **one unique packet**
+        - **ALL encoded images are required** to reconstruct the message
+        - Maximum security: no single image reveals the complete secret
+        """)
+    else:
+        st.success("""
+        **🔄 Basic Mode (Uniform Message Embedding)**
+        - The **complete message** is embedded in **every** image
+        - Each image can be decoded **independently**
+        - Perfect for backups or sending to multiple recipients
+        """)
+    
+    st.divider()
+    
+    # ========================================================================
+    # FILE UPLOAD
+    # ========================================================================
+    
+    st.markdown("#### Upload Images")
     upload_type, uploaded_files = create_batch_upload_section()
     
+    # Count and validate files
+    file_count = 0
     if uploaded_files:
-        st.markdown(f"**Files selected:** {len(uploaded_files)}")
+        if isinstance(uploaded_files, list):
+            file_count = len(uploaded_files)
+        else:
+            file_count = 1  # Single file (ZIP)
         
-        st.divider()
-        st.markdown("### Configure Encoding")
+        st.success(f"✅ **{file_count} file(s) selected**")
         
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            method, message, use_encryption, encryption_password = create_batch_options_section()
-        
-        with col2:
-            st.info("⚙️ Same settings will be applied to all images")
-        
-        col1, col2, col3 = st.columns(3)
-        with col2:
-            if st.button("▶️ Start Batch Encoding", use_container_width=True, type="primary"):
-                try:
-                    with st.spinner("Processing batch..."):
-                        results = []
-                        success_count = 0
-                        failed_count = 0
-                        
-                        progress_bar = st.progress(0)
-                        status_text = st.empty()
-                        
-                        for idx, uploaded_file in enumerate(uploaded_files):
-                            status_text.text(f"Processing: {uploaded_file.name}")
-                            
-                            try:
-                                image = Image.open(uploaded_file)
-                                
-                                message_to_embed = message
-                                if use_encryption and encryption_password:
-                                    message_to_embed = encrypt_message(message, encryption_password)
-                                
-                                if method == "LSB":
-                                    encoded = lsb_encode(image, message_to_embed)
-                                elif method == "Hybrid DCT":
-                                    encoded = dct_encode(image, message_to_embed)
-                                elif method == "Hybrid DWT":
-                                    encoded = dwt_encode(image, message_to_embed)
-                                else:
-                                    encoded = lsb_encode(image, message_to_embed)
-                                
-                                output_path = f"data/output/encoded/{method}/{uploaded_file.name}"
-                                encoded.save(output_path)
-                                
-                                results.append({
-                                    "filename": uploaded_file.name,
-                                    "status": "✅ Success",
-                                    "output": output_path
-                                })
-                                success_count += 1
-                                
-                            except Exception as e:
-                                results.append({
-                                    "filename": uploaded_file.name,
-                                    "status": f"❌ Failed"
-                                })
-                                failed_count += 1
-                            
-                            progress_bar.progress((idx + 1) / len(uploaded_files))
-                        
-                        st.divider()
-                        st.markdown("### 📊 Batch Results")
-                        
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("Total", len(uploaded_files))
-                        with col2:
-                            st.metric("Success", success_count, delta="✅")
-                        with col3:
-                            st.metric("Failed", failed_count, delta="❌")
-                        
-                        st.dataframe(pd.DataFrame(results), use_container_width=True)
-                        
-                        if success_count > 0:
-                            show_success(f"Successfully encoded {success_count} images!")
-                        
-                except Exception as e:
-                    show_error(f"Batch encoding error: {str(e)}")
+        # Validation for Advanced mode
+        if is_advanced_mode:
+            if file_count < 2:
+                st.error("⚠️ **Advanced Mode requires at least 2 images.** Upload more images or switch to Basic Mode.")
+                return
+            else:
+                st.info(f"📦 Message will be split into **{file_count} packets** (one per image)")
     
-    show_info_box(
-        "Batch Encoding",
-        """
-        Batch encoding lets you hide the same message in multiple images at once.
-        This is perfect when you need to send the same message to multiple people or create backups.
-        All images will be processed with the same settings and saved automatically.
-        """,
-        [
-            "Encode many images quickly without repeating steps",
-            "Use the same message for multiple recipients",
-            "Create multiple copies with the same hidden data",
-            "Save time on repetitive encoding tasks",
-            "Automatic progress tracking and error reporting"
-        ]
-    )
+    if not uploaded_files:
+        return
+    
+    st.divider()
+    
+    # ========================================================================
+    # ENCODING OPTIONS
+    # ========================================================================
+    
+    st.markdown("#### Configure Encoding")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        method, message, use_encryption, encryption_password = create_batch_options_section()
+    
+    with col2:
+        st.markdown("**📋 Configuration Summary:**")
+        mode_name = "Advanced (Packetized)" if is_advanced_mode else "Basic (Uniform)"
+        st.write(f"- **Mode:** {mode_name}")
+        st.write(f"- **Method:** {method}")
+        st.write(f"- **Encryption:** {'Yes' if use_encryption else 'No'}")
+        st.write(f"- **Images:** {file_count}")
+        
+        if message:
+            st.write(f"- **Message Length:** {len(message)} characters")
+            if is_advanced_mode and file_count >= 2:
+                import math
+                packet_size = math.ceil(len(message) / file_count)
+                st.write(f"- **Packet Size:** ~{packet_size} chars/image")
+        
+        if is_advanced_mode:
+            st.warning("⚠️ Keep ALL encoded images together for decoding!")
+    
+    # ========================================================================
+    # ENCODE BUTTON
+    # ========================================================================
+    
+    col1, col2, col3 = st.columns(3)
+    with col2:
+        start_btn = st.button("▶️ Start Batch Encoding", use_container_width=True, type="primary")
+    
+    if start_btn:
+        if not message:
+            show_error("Please enter a message to encode")
+            return
+        
+        if is_advanced_mode:
+            _perform_advanced_batch_encode(
+                uploaded_files, upload_type, message, method, 
+                use_encryption, encryption_password, file_count
+            )
+        else:
+            _perform_basic_batch_encode(
+                uploaded_files, message, method, 
+                use_encryption, encryption_password
+            )
+    
+    # ========================================================================
+    # HELP SECTION
+    # ========================================================================
+    
+    st.divider()
+    
+    if is_advanced_mode:
+        show_info_box(
+            "Advanced Batch Encoding (Packetized)",
+            """
+            In Advanced mode, your message is split into equal packets and distributed across images.
+            This provides maximum security as no single image contains the complete message.
+            All encoded images must be collected together for successful decoding.
+            """,
+            [
+                "Message is divided equally across all images",
+                "Each image contains only a fragment (packet) of the message",
+                "ALL encoded images are required for decoding",
+                "Missing even one image prevents message reconstruction",
+                "Images are sorted by filename for deterministic ordering",
+                "Perfect for high-security distributed storage"
+            ]
+        )
+    else:
+        show_info_box(
+            "Basic Batch Encoding (Uniform)",
+            """
+            Basic batch encoding hides the same complete message in every image.
+            Each encoded image is independent and can be decoded on its own.
+            Perfect for creating backups or sending to multiple recipients.
+            """,
+            [
+                "Same message embedded in every image",
+                "Each image can be decoded independently",
+                "Create multiple copies with the same hidden data",
+                "Perfect for redundancy and backup purposes",
+                "Any single image reveals the complete message"
+            ]
+        )
+
+
+def _perform_basic_batch_encode(uploaded_files, message, method, use_encryption, encryption_password):
+    """Execute basic batch encoding - same message in all images."""
+    try:
+        with st.spinner("Processing batch (Basic Mode)..."):
+            results = []
+            success_count = 0
+            failed_count = 0
+            
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            for idx, uploaded_file in enumerate(uploaded_files):
+                status_text.text(f"Processing: {uploaded_file.name}")
+                
+                try:
+                    image = Image.open(uploaded_file)
+                    
+                    message_to_embed = message
+                    if use_encryption and encryption_password:
+                        message_to_embed = encrypt_message(message, encryption_password)
+                    
+                    if method == "LSB":
+                        encoded = lsb_encode(image, message_to_embed)
+                    elif method == "Hybrid DCT":
+                        encoded = dct_encode(image, message_to_embed)
+                    elif method == "Hybrid DWT":
+                        encoded = dwt_encode(image, message_to_embed)
+                    else:
+                        encoded = lsb_encode(image, message_to_embed)
+                    
+                    # Save to output directory
+                    import os
+                    output_dir = f"data/output/encoded/{method}"
+                    os.makedirs(output_dir, exist_ok=True)
+                    output_path = f"{output_dir}/{uploaded_file.name}"
+                    encoded.save(output_path)
+                    
+                    results.append({
+                        "filename": uploaded_file.name,
+                        "status": "✅ Success",
+                        "output": output_path
+                    })
+                    success_count += 1
+                    
+                except Exception as e:
+                    results.append({
+                        "filename": uploaded_file.name,
+                        "status": f"❌ Failed: {str(e)[:30]}"
+                    })
+                    failed_count += 1
+                
+                progress_bar.progress((idx + 1) / len(uploaded_files))
+            
+            status_text.text("Complete!")
+            
+            # Display results
+            st.divider()
+            st.markdown("### 📊 Batch Results (Basic Mode)")
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total", len(uploaded_files))
+            with col2:
+                st.metric("Success", success_count, delta="✅")
+            with col3:
+                st.metric("Failed", failed_count, delta="❌" if failed_count > 0 else None)
+            
+            st.dataframe(pd.DataFrame(results), use_container_width=True)
+            
+            if success_count > 0:
+                show_success(f"Successfully encoded {success_count} images! Each contains the complete message.")
+                
+    except Exception as e:
+        show_error(f"Batch encoding error: {str(e)}")
+
+
+def _perform_advanced_batch_encode(uploaded_files, upload_type, message, method, 
+                                    use_encryption, encryption_password, file_count):
+    """Execute advanced batch encoding - split message across images (packetized)."""
+    try:
+        from src.batch_processing.packet_handler import packetize_message, get_packet_map
+        import zipfile
+        import tempfile
+        
+        with st.spinner("Processing batch (Advanced Mode - Packetized)..."):
+            results = []
+            success_count = 0
+            failed_count = 0
+            encoded_images = []  # Store encoded images for download
+            
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            # Prepare message (encrypt BEFORE packetizing)
+            message_to_use = message
+            if use_encryption and encryption_password:
+                message_to_use = encrypt_message(message, encryption_password)
+            
+            # Sort files by name for deterministic ordering
+            if isinstance(uploaded_files, list):
+                sorted_files = sorted(uploaded_files, key=lambda x: x.name.lower())
+            else:
+                sorted_files = [uploaded_files]
+            
+            # Create packets
+            status_text.text("Creating message packets...")
+            try:
+                packets = packetize_message(message_to_use, len(sorted_files))
+            except Exception as e:
+                show_error(f"Packetization failed: {str(e)}")
+                return
+            
+            progress_bar.progress(0.1)
+            
+            # Encode each image with its packet
+            import os
+            output_dir = f"data/output/encoded/{method}/packetized"
+            os.makedirs(output_dir, exist_ok=True)
+            
+            packet_map = {}
+            
+            for idx, (uploaded_file, packet) in enumerate(zip(sorted_files, packets)):
+                status_text.text(f"Encoding packet {idx+1}/{len(sorted_files)}: {uploaded_file.name}")
+                
+                try:
+                    image = Image.open(uploaded_file)
+                    
+                    # Encode packet into image
+                    if method == "LSB":
+                        encoded = lsb_encode(image, packet)
+                    elif method == "Hybrid DCT":
+                        encoded = dct_encode(image, packet)
+                    elif method == "Hybrid DWT":
+                        encoded = dwt_encode(image, packet)
+                    else:
+                        encoded = lsb_encode(image, packet)
+                    
+                    # Save with packet info in filename
+                    base_name = os.path.splitext(uploaded_file.name)[0]
+                    output_filename = f"{base_name}_pkt{idx+1}of{len(sorted_files)}.png"
+                    output_path = f"{output_dir}/{output_filename}"
+                    encoded.save(output_path, "PNG")
+                    
+                    # Store for download
+                    encoded_images.append({
+                        "image": encoded,
+                        "filename": output_filename
+                    })
+                    
+                    results.append({
+                        "filename": uploaded_file.name,
+                        "packet": f"{idx+1}/{len(sorted_files)}",
+                        "status": "✅ Success",
+                        "output": output_path
+                    })
+                    
+                    packet_map[uploaded_file.name] = {
+                        "packet_id": idx,
+                        "total_packets": len(sorted_files),
+                        "output_file": output_filename
+                    }
+                    
+                    success_count += 1
+                    
+                except Exception as e:
+                    results.append({
+                        "filename": uploaded_file.name,
+                        "packet": f"{idx+1}/{len(sorted_files)}",
+                        "status": f"❌ Failed: {str(e)[:30]}"
+                    })
+                    failed_count += 1
+                
+                progress_bar.progress(0.1 + (0.9 * (idx + 1) / len(sorted_files)))
+            
+            status_text.text("Complete!")
+            
+            # Display results
+            st.divider()
+            st.markdown("### 📊 Batch Results (Advanced Mode - Packetized)")
+            
+            st.info(f"**Mode:** Packetized Distribution | **Total Packets:** {len(sorted_files)}")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Total Images", len(sorted_files))
+            with col2:
+                st.metric("Packets Created", len(packets))
+            with col3:
+                st.metric("Success", success_count, delta="✅")
+            with col4:
+                st.metric("Failed", failed_count, delta="❌" if failed_count > 0 else None)
+            
+            # Show packet distribution
+            with st.expander("📦 Packet Distribution Map"):
+                st.json(packet_map)
+            
+            st.dataframe(pd.DataFrame(results), use_container_width=True)
+            
+            if success_count > 0:
+                show_success(f"Successfully created {success_count} encoded images with packetized message!")
+                st.warning(f"⚠️ **IMPORTANT:** You need ALL {success_count} images to decode the complete message!")
+                
+                st.divider()
+                st.markdown("### 📥 Download Encoded Images")
+                
+                # Create ZIP file for download
+                zip_buffer = BytesIO()
+                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                    for img_data in encoded_images:
+                        img_buffer = BytesIO()
+                        img_data["image"].save(img_buffer, format="PNG")
+                        img_buffer.seek(0)
+                        zip_file.writestr(img_data["filename"], img_buffer.getvalue())
+                
+                zip_buffer.seek(0)
+                
+                # Download button for ZIP
+                st.download_button(
+                    label=f"⬇️ Download All {success_count} Encoded Images (ZIP)",
+                    data=zip_buffer.getvalue(),
+                    file_name=f"packetized_batch_{method}.zip",
+                    mime="application/zip",
+                    use_container_width=True,
+                    type="primary"
+                )
+                
+                st.caption(f"📁 Files also saved to: `{output_dir}`")
+                
+                # Individual download option
+                with st.expander("📥 Download Individual Images"):
+                    for img_data in encoded_images:
+                        img_buffer = BytesIO()
+                        img_data["image"].save(img_buffer, format="PNG")
+                        img_buffer.seek(0)
+                        
+                        st.download_button(
+                            label=f"⬇️ {img_data['filename']}",
+                            data=img_buffer.getvalue(),
+                            file_name=img_data["filename"],
+                            mime="image/png",
+                            key=f"download_{img_data['filename']}"
+                        )
+                
+            if failed_count > 0:
+                show_error(f"⚠️ {failed_count} images failed. The message cannot be fully reconstructed without all images!")
+                
+    except ImportError:
+        show_error("Advanced mode requires the packet_handler module. Please ensure it's installed.")
+    except Exception as e:
+        show_error(f"Advanced batch encoding error: {str(e)}")
+        logger.error(f"Advanced batch encode error: {e}", exc_info=True)
 
 
 def show_batch_decode():
-    """Display batch decoding interface."""
+    """Display batch decoding interface with auto-detection for packetized messages."""
     st.markdown("### Batch Image Decoding")
+    
+    st.info("""
+    **Auto-Detection:** The system will automatically detect if images contain:
+    - **Basic Mode:** Same message in each image (decode any single image)
+    - **Advanced Mode:** Packetized messages (need ALL images to reconstruct)
+    """)
     
     upload_type, uploaded_files = create_batch_upload_section()
     
     if uploaded_files:
-        st.markdown(f"**Files selected:** {len(uploaded_files)}")
+        # Handle both single file (ZIP) and multiple files
+        if isinstance(uploaded_files, list):
+            file_count = len(uploaded_files)
+        else:
+            file_count = 1  # Single ZIP file
+        
+        st.markdown(f"**Files selected:** {file_count}")
         
         st.divider()
         
-        use_encryption = create_checkbox("🔐 Messages are encrypted - I have the password")
+        use_encryption = create_checkbox("🔐 Messages are encrypted - I have the password", key="batch_decode_encrypt")
         decryption_password = None
         if use_encryption:
             decryption_password = create_text_input(
                 label="Decryption password",
                 placeholder="Enter the password",
-                password=True
+                password=True,
+                key="batch_decode_password"
             )
         
         col1, col2, col3 = st.columns(3)
         with col2:
             if st.button("▶️ Start Batch Decoding", use_container_width=True, type="primary"):
-                try:
-                    with st.spinner("Processing batch..."):
-                        results = []
-                        success_count = 0
-                        failed_count = 0
-                        
-                        progress_bar = st.progress(0)
-                        status_text = st.empty()
-                        
-                        for idx, uploaded_file in enumerate(uploaded_files):
-                            status_text.text(f"Processing: {uploaded_file.name}")
-                            
-                            try:
-                                image = Image.open(uploaded_file)
-                                
-                                decoded_message = None
-                                for method_func in [lsb_decode, dct_decode, dwt_decode]:
-                                    try:
-                                        decoded_message = method_func(image)
-                                        if decoded_message:
-                                            break
-                                    except:
-                                        continue
-                                
-                                if decoded_message:
-                                    if use_encryption and decryption_password:
-                                        decoded_message = decrypt_message(decoded_message, decryption_password)
-                                    
-                                    results.append({
-                                        "filename": uploaded_file.name,
-                                        "status": "✅ Success",
-                                        "message_length": len(decoded_message),
-                                        "preview": decoded_message[:50] + "..." if len(decoded_message) > 50 else decoded_message
-                                    })
-                                    success_count += 1
-                                else:
-                                    results.append({
-                                        "filename": uploaded_file.name,
-                                        "status": "❌ No message found"
-                                    })
-                                    failed_count += 1
-                                    
-                            except Exception as e:
-                                results.append({
-                                    "filename": uploaded_file.name,
-                                    "status": f"❌ Error"
-                                })
-                                failed_count += 1
-                            
-                            progress_bar.progress((idx + 1) / len(uploaded_files))
-                        
-                        st.divider()
-                        st.markdown("### 📊 Batch Results")
-                        
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("Total", len(uploaded_files))
-                        with col2:
-                            st.metric("Success", success_count, delta="✅")
-                        with col3:
-                            st.metric("Failed", failed_count, delta="❌")
-                        
-                        st.dataframe(pd.DataFrame(results), use_container_width=True)
-                        
-                        if success_count > 0:
-                            show_success(f"Successfully decoded {success_count} messages!")
-                        
-                except Exception as e:
-                    show_error(f"Batch decoding error: {str(e)}")
+                _perform_batch_decode(uploaded_files, upload_type, use_encryption, decryption_password)
     
     show_info_box(
         "Batch Decoding",
         """
-        Batch decoding extracts hidden messages from multiple images at once.
-        Perfect for processing a collection of received images and seeing what messages they contain.
-        The system automatically detects the encoding method used in each image.
+        Batch decoding extracts hidden messages from multiple images.
+        The system automatically detects whether images contain uniform messages (Basic Mode)
+        or packetized data (Advanced Mode) and handles them appropriately.
         """,
         [
-            "Extract messages from many images quickly",
-            "See all messages in one organized view",
-            "Automatic method detection for each image",
-            "Handle encrypted messages with one password",
-            "Get a summary of what was found in each image"
+            "Automatic mode detection (Basic vs Advanced)",
+            "For Basic Mode: decode each image independently",
+            "For Advanced Mode: reconstruct message from all packets",
+            "Supports encrypted message decryption",
+            "Detailed results for each processed image"
         ]
     )
+
+
+def _perform_batch_decode(uploaded_files, upload_type, use_encryption, decryption_password):
+    """Execute batch decoding with auto-detection for packetized messages."""
+    try:
+        import tempfile
+        import os
+        
+        with st.spinner("Processing batch..."):
+            results = []
+            success_count = 0
+            failed_count = 0
+            detected_packets = []  # For Advanced mode reconstruction
+            
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            # Handle ZIP file upload vs multiple images
+            if upload_type == "ZIP File" and uploaded_files:
+                status_text.text("Extracting ZIP file...")
+                
+                # Extract ZIP to temp directory
+                from src.batch_processing.zip_handler import extract_zip
+                temp_dir = tempfile.mkdtemp()
+                extract_result = extract_zip(uploaded_files, temp_dir)
+                
+                if not extract_result['success']:
+                    show_error(f"ZIP extraction failed: {extract_result['message']}")
+                    return
+                
+                # Create file-like objects from extracted files
+                files_to_process = []
+                for file_path in extract_result['extracted_files']:
+                    files_to_process.append({
+                        'path': file_path,
+                        'name': os.path.basename(file_path)
+                    })
+                
+                progress_bar.progress(0.1)
+            else:
+                # Multiple individual images
+                files_to_process = []
+                for f in uploaded_files:
+                    files_to_process.append({
+                        'file': f,
+                        'name': f.name
+                    })
+            
+            # Process each file
+            total_files = len(files_to_process)
+            
+            for idx, file_info in enumerate(files_to_process):
+                filename = file_info['name']
+                status_text.text(f"Processing: {filename}")
+                
+                try:
+                    # Open image from path or uploaded file
+                    if 'path' in file_info:
+                        image = Image.open(file_info['path'])
+                    else:
+                        image = Image.open(file_info['file'])
+                    
+                    decoded_message = None
+                    method_used = None
+                    
+                    # Try each decoding method
+                    for method_name, method_func in [("LSB", lsb_decode), ("DCT", dct_decode), ("DWT", dwt_decode)]:
+                        try:
+                            decoded = method_func(image)
+                            if decoded and is_valid_message(decoded):
+                                decoded_message = decoded
+                                method_used = method_name
+                                break
+                        except:
+                            continue
+                    
+                    if decoded_message:
+                        # Check if it's a packetized message
+                        try:
+                            from src.batch_processing.packet_handler import is_packetized_message, extract_packet_data
+                            
+                            if is_packetized_message(decoded_message):
+                                packet_data = extract_packet_data(decoded_message)
+                                if packet_data:
+                                    header, payload = packet_data
+                                    detected_packets.append((header, payload, filename))
+                                    results.append({
+                                        "filename": filename,
+                                        "status": f"✅ Packet {header['packet_id']+1}/{header['total_packets']}",
+                                        "method": method_used,
+                                        "type": "Packetized"
+                                    })
+                                    success_count += 1
+                                    progress_bar.progress(0.1 + (0.9 * (idx + 1) / total_files))
+                                    continue
+                        except ImportError:
+                            pass  # packet_handler not available
+                        
+                        # Regular message (Basic Mode)
+                        if use_encryption and decryption_password:
+                            try:
+                                decoded_message = decrypt_message(decoded_message, decryption_password)
+                            except:
+                                pass  # Keep original if decryption fails
+                        
+                        results.append({
+                            "filename": filename,
+                            "status": "✅ Success",
+                            "method": method_used,
+                            "message_length": len(decoded_message),
+                            "preview": decoded_message[:50] + "..." if len(decoded_message) > 50 else decoded_message,
+                            "full_message": decoded_message,  # Store full message for display
+                            "type": "Uniform"
+                        })
+                        success_count += 1
+                    else:
+                        results.append({
+                            "filename": filename,
+                            "status": "❌ No message found",
+                            "type": "Unknown"
+                        })
+                        failed_count += 1
+                        
+                except Exception as e:
+                    results.append({
+                        "filename": filename,
+                        "status": f"❌ Error: {str(e)[:20]}"
+                    })
+                    failed_count += 1
+                
+                progress_bar.progress(0.1 + (0.9 * (idx + 1) / total_files))
+            
+            status_text.text("Complete!")
+            
+            st.divider()
+            st.markdown("### 📊 Batch Decode Results")
+            
+            # Check if we found packetized messages
+            if detected_packets:
+                st.info(f"**Detected Mode:** Advanced (Packetized) - Found {len(detected_packets)} packets")
+                
+                # Try to reconstruct the message
+                try:
+                    from src.batch_processing.packet_handler import reconstruct_message
+                    
+                    packets_for_reconstruction = [(h, p) for h, p, _ in detected_packets]
+                    success, reconstructed, details = reconstruct_message(packets_for_reconstruction)
+                    
+                    if success:
+                        # Decrypt if needed
+                        if use_encryption and decryption_password:
+                            try:
+                                reconstructed = decrypt_message(reconstructed, decryption_password)
+                            except:
+                                st.warning("Decryption failed - showing encrypted message")
+                        
+                        st.success(f"✅ **Message Reconstructed Successfully!** ({details})")
+                        st.markdown("### 📩 Reconstructed Message:")
+                        st.text_area("Complete Message", value=reconstructed, height=200, disabled=True)
+                    else:
+                        st.error(f"❌ **Reconstruction Failed:** {details}")
+                        st.warning("Make sure you have uploaded ALL encoded images from the batch.")
+                        
+                except ImportError:
+                    st.warning("Packet reconstruction not available. Install packet_handler module.")
+            else:
+                st.info("**Detected Mode:** Basic (Uniform) - Each image decoded independently")
+            
+            # Show metrics
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total", total_files)
+            with col2:
+                st.metric("Success", success_count, delta="✅")
+            with col3:
+                st.metric("Failed", failed_count, delta="❌" if failed_count > 0 else None)
+            
+            # Show detailed results
+            st.dataframe(pd.DataFrame(results), use_container_width=True)
+            
+            # For Basic/Uniform mode, display all decoded messages
+            if success_count > 0 and not detected_packets:
+                show_success(f"Successfully decoded {success_count} messages!")
+                
+                st.markdown("### 📩 Decoded Messages:")
+                for idx, result in enumerate(results):
+                    if result.get("status") == "✅ Success" and result.get("type") == "Uniform":
+                        with st.expander(f"📄 {result['filename']} ({result.get('method', 'Unknown')} method)", expanded=(idx == 0)):
+                            full_message = result.get('full_message', result.get('preview', 'No message'))
+                            st.text_area(
+                                "Message",
+                                value=full_message,
+                                height=150,
+                                disabled=True,
+                                key=f"decode_msg_{idx}_{result['filename']}"
+                            )
+                
+    except Exception as e:
+        show_error(f"Batch decoding error: {str(e)}")
+        logger.error(f"Batch decode error: {e}", exc_info=True)
 
 
 # ============================================================================
@@ -933,7 +1396,7 @@ def show_pixel_selector_section():
                     
                     image = Image.open(image_file)
                     arr = np.array(image.convert("RGB"))
-                    h, w, _ = arr.shape;
+                    h, w, _ = arr.shape
                     
                     # Select pixels
                     selected_coords = select_pixels(
@@ -964,7 +1427,7 @@ def show_pixel_selector_section():
                     col1, col2 = st.columns(2)
                     with col1:
                         st.markdown("**Original Image**")
-                        st.image(arr, use_column_width=True)
+                        st.image(arr, use_container_width=True)
                     
                     with col2:
                         st.markdown("**Best Pixels (marked in red)**")
@@ -972,7 +1435,7 @@ def show_pixel_selector_section():
                         for x, y in selected_coords[:100]:
                             if 0 <= x < w and 0 <= y < h:
                                 overlay[y, x] = [255, 0, 0]
-                        st.image(overlay, use_column_width=True)
+                        st.image(overlay, use_container_width=True)
                     
                     st.divider()
                     st.markdown("**First 20 Best Pixel Locations:**")
@@ -1003,7 +1466,7 @@ def show_pixel_selector_section():
 
 
 # ============================================================================
-#                    MODULE 5: STEGANOGRAPHY DETECTOR (FIXED)
+#                    MODULE 5: STEGANOGRAPHY DETECTOR
 # ============================================================================
 
 def show_steg_detector_section():
@@ -1046,8 +1509,7 @@ def show_steg_detector_section():
                 with st.spinner("Analyzing image for hidden content..."):
                     arr = np.array(suspicious_image.convert("RGB"))
                     
-                    # FIXED: Use multiple detection metrics for better accuracy
-                    detection_score, analysis_data = analyze_image_for_steganography(arr, sensitivity)
+                    detection_score, analysis_data = _analyze_image_for_steganography(arr, sensitivity)
                     
                     st.divider()
                     st.markdown("### Analysis Results")
@@ -1062,35 +1524,22 @@ def show_steg_detector_section():
                     with col2:
                         st.markdown("**Detection Result**")
                         
-                        # Determine verdict based on detection score
                         if detection_score < 25:
                             emoji = "🟢"
                             verdict = "Clean Image"
-                            explanation = "This image shows natural patterns consistent with normal photography. No hidden data detected."
+                            explanation = "This image shows natural patterns. No hidden data detected."
                         elif detection_score < 50:
                             emoji = "🟡"
                             verdict = "Uncertain"
-                            explanation = "Image shows some statistical anomalies but could be due to compression or editing. Not conclusive."
+                            explanation = "Image shows some anomalies but could be due to compression."
                         else:
                             emoji = "🔴"
                             verdict = "Suspicious - Possible Hidden Data"
-                            explanation = "Image shows multiple signs of data embedding. Hidden message might be present."
+                            explanation = "Image shows signs of data embedding."
                         
                         st.metric(f"{emoji} Detection Score", f"{detection_score:.1f}%")
                         st.subheader(verdict)
                         st.write(explanation)
-                    
-                    st.divider()
-                    st.markdown("**Detection Method:**")
-                    st.markdown("""
-                    This detector analyzes multiple image properties:
-                    - **Bit-plane entropy:** Checks if LSBs appear random (LSB embedding signature)
-                    - **Chi-square test:** Measures pixel value distribution (compression artifacts)
-                    - **Local variance:** Looks for suspicious patterns in image regions
-                    - **Histogram shape:** Checks for unusual peaks indicating manipulation
-                    
-                    **Note:** This is a heuristic detector and may have false positives/negatives.
-                    """)
                     
                     show_success("Analysis complete!")
                     
@@ -1103,135 +1552,64 @@ def show_steg_detector_section():
         """
         This tool checks if an image contains hidden data by analyzing statistical patterns.
         Images with hidden messages often show different patterns than normal images.
-        This is useful for security checks, authenticating images, or investigative purposes.
         """,
         [
             "Detect if an image contains hidden messages",
             "Verify image authenticity and integrity",
             "Analyze image for suspicious patterns",
-            "Investigate potentially compromised images",
-            "Understand image randomness and entropy"
+            "Investigate potentially compromised images"
         ]
     )
 
 
-def analyze_image_for_steganography(img_array, sensitivity):
-    """
-    Analyze image using multiple metrics to detect steganography.
-    
-    FIXED: Better detection algorithm that doesn't give false positives on clean images.
-    
-    Args:
-        img_array (np.ndarray): Image pixel array (RGB)
-        sensitivity (int): Detection sensitivity (1-10, where 10 is strictest)
-    
-    Returns:
-        tuple: (detection_score, analysis_data_dict)
-    """
+def _analyze_image_for_steganography(img_array, sensitivity):
+    """Analyze image for steganography indicators."""
     try:
-        from scipy.stats import entropy, chisquare
+        from scipy.stats import entropy
         
         detection_indicators = []
         
-        # ========== METRIC 1: LSB Entropy (Most important for LSB embedding) ==========
-        # Extract LSB plane and check entropy
+        # LSB Entropy
         lsb_plane = (img_array & 1).flatten()
         lsb_entropy = entropy(np.bincount(lsb_plane, minlength=2))
         
-        # Clean images typically have LSB entropy around 0.5-0.8
-        # Embedded data has entropy closer to 1.0
         if lsb_entropy > 0.85:
             detection_indicators.append(("LSB Entropy (High)", lsb_entropy, 30))
         else:
             detection_indicators.append(("LSB Entropy (Normal)", lsb_entropy, 0))
         
-        # ========== METRIC 2: Histogram Flatness (Chi-square test) ==========
-        # Check if pixel distribution is too uniform (sign of embedding)
+        # Histogram analysis
         hist, _ = np.histogram(img_array.flatten(), bins=256, range=(0, 256))
         expected_freq = len(img_array.flatten()) / 256
-        
-        # Chi-square goodness of fit test
         chi2_stat = np.sum((hist - expected_freq) ** 2 / (expected_freq + 1))
         
-        # Clean images have varied histogram
-        # Embedded data can flatten it
         if chi2_stat < 100:
             detection_indicators.append(("Histogram Flatness", chi2_stat, 20))
         else:
             detection_indicators.append(("Histogram Flatness", chi2_stat, 0))
         
-        # ========== METRIC 3: Bit-plane Analysis ==========
-        # Check randomness in each bit plane
+        # Bit-plane analysis
         bit_plane_entropies = []
         for bit in range(8):
             bit_plane = ((img_array >> bit) & 1).flatten()
             bp_entropy = entropy(np.bincount(bit_plane, minlength=2))
             bit_plane_entropies.append(bp_entropy)
         
-        # Average entropy across bit planes
-        avg_bp_entropy = np.mean(bit_plane_entropies)
-        
-        # Clean images have lower entropy in higher bits
-        # Embedded LSB data makes LSB plane very random (≈1.0)
-        if bit_plane_entropies[0] > 0.95:  # LSB is very random
+        if bit_plane_entropies[0] > 0.95:
             detection_indicators.append(("Bit-Plane Randomness (High)", bit_plane_entropies[0], 25))
         else:
             detection_indicators.append(("Bit-Plane Randomness", bit_plane_entropies[0], 0))
         
-        # ========== METRIC 4: Regional Variance Analysis ==========
-        # Divide image into regions and check for uniform patches
-        h, w = img_array.shape[:2]
-        region_size = 16
-        variance_scores = []
-        
-        for y in range(0, h - region_size, region_size):
-            for x in range(0, w - region_size, region_size):
-                region = img_array[y:y+region_size, x:x+region_size]
-                var = np.var(region)
-                variance_scores.append(var)
-        
-        avg_variance = np.mean(variance_scores)
-        
-        # Very low regional variance might indicate encoding
-        if avg_variance < 100 and len(variance_scores) > 0:
-            detection_indicators.append(("Regional Variance (Low)", avg_variance, 15))
-        else:
-            detection_indicators.append(("Regional Variance", avg_variance, 0))
-        
-        # ========== METRIC 5: Pair-wise Difference (PWD) Test ==========
-        # Check for inconsistent pixel pairs (embedding signature)
-        # Randomly sample pixel pairs
-        sample_size = min(5000, h * w // 2)
-        y_coords = np.random.choice(h, sample_size, replace=True)
-        x_coords = np.random.choice(w, sample_size, replace=True)
-        
-        pixel_values = img_array[y_coords, x_coords, 0]  # Use R channel
-        differences = np.abs(np.diff(pixel_values[:1000]))
-        
-        # Count how many pixels differ by exactly 1 (LSB embedding signature)
-        ones_count = np.sum(differences == 1)
-        ones_ratio = ones_count / len(differences) if len(differences) > 0 else 0
-        
-        # Normal images have ~6-8% pixel pairs with difference of 1
-        # Embedded images have >15%
-        if ones_ratio > 0.15:
-            detection_indicators.append(("Pixel Pair Anomaly (High)", ones_ratio, 20))
-        else:
-            detection_indicators.append(("Pixel Pair Anomaly", ones_ratio, 0))
-        
-        # ========== CALCULATE FINAL DETECTION SCORE ==========
-        # Sum weighted scores based on sensitivity
+        # Calculate final score
         total_score = 0
-        sensitivity_factor = sensitivity / 5.0  # Convert to 0.2-2.0 multiplier
+        sensitivity_factor = sensitivity / 5.0
         
         for metric_name, metric_value, base_score in detection_indicators:
             adjusted_score = base_score * sensitivity_factor
             total_score += adjusted_score
         
-        # Normalize to 0-100
         detection_score = min(100, total_score)
         
-        # ========== PREPARE OUTPUT DATA ==========
         analysis_data = [
             {"Metric": ind[0], "Value": f"{ind[1]:.3f}" if isinstance(ind[1], float) else str(ind[1])[:20]}
             for ind in detection_indicators
@@ -1242,43 +1620,6 @@ def analyze_image_for_steganography(img_array, sensitivity):
     except Exception as e:
         logger.error(f"Error in steganography detection: {str(e)}")
         return 0, [{"Metric": "Error", "Value": str(e)}]
-
-# ============================================================================
-
-# ============================================================================
-#                    HELPER FUNCTION: MESSAGE VALIDATION
-# ============================================================================
-
-def is_valid_message(text):
-    """
-    Validate if extracted text is a real message, not garbage.
-    
-    Checks:
-    1. Not empty
-    2. Has minimum length (at least 3 characters)
-    3. At least 70% printable ASCII characters
-    4. Not all whitespace
-    
-    Args:
-        text (str): Text to validate
-    
-    Returns:
-        bool: True if valid message, False otherwise
-    """
-    if not text or len(text) < 3:
-        return False
-    
-    if text.isspace():
-        return False
-    
-    # Count printable ASCII characters
-    printable_count = sum(
-        1 for c in text 
-        if 32 <= ord(c) <= 126 or c in '\n\r\t'
-    )
-    
-    # At least 70% should be printable
-    return (printable_count / len(text)) >= 0.7
 
 
 # ============================================================================
@@ -1306,8 +1647,6 @@ def show_redundancy_section():
             try:
                 image = Image.open(image_file)
                 st.image(image, caption="Your Image", use_container_width=True)
-                img_width, img_height = image.size
-                st.caption(f"Image size: {img_width}×{img_height}")
             except Exception as e:
                 show_error(f"Error loading image: {str(e)}")
         
@@ -1328,98 +1667,26 @@ def show_redundancy_section():
             help="More parity = can recover from more corruption, but needs more space"
         )
         
-        lsb_bits = st.selectbox(
-            "LSB bits to use",
-            [1, 2, 4],
-            index=0,
-            help="1 = most robust, 4 = more capacity"
-        )
-        
         st.info(f"""
         **Configuration Summary:**
         - **Parity Bytes:** {ecc_strength}
         - **Can recover from:** ~{ecc_strength//2} byte errors
-        - **Overhead:** ~{(ecc_strength / (len(message) if message else 100)) * 100:.1f}% of message size
         """)
-    
-    st.divider()
-    st.markdown("### Capacity Check")
-    
-    if image_file and message:
-        try:
-            from stegotool.modules.module6_redundancy.capacity_checker import can_fit_payload
-            
-            img = Image.open(image_file)
-            img_size = img.size
-            channels = 3 if img.mode == 'RGB' else 4 if img.mode == 'RGBA' else 1
-            
-            message_bytes = len(message.encode())
-            fits, available = can_fit_payload(
-                img_size,
-                message_bytes,
-                nsym=ecc_strength,
-                channels=channels,
-                lsb_bits=lsb_bits
-            )
-            
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Message Size", f"{message_bytes} B")
-            with col2:
-                st.metric("Parity Bytes", ecc_strength)
-            with col3:
-                st.metric("Total Required", f"{message_bytes + ecc_strength} B")
-            with col4:
-                st.metric("Available", f"{available} B")
-            
-            if fits:
-                st.success(f"✅ Message with ECC will fit! ({available - (message_bytes + ecc_strength)} bytes spare)")
-            else:
-                st.error(f"❌ Message too large! Need {(message_bytes + ecc_strength) - available} more bytes")
-        
-        except Exception as e:
-            logger.warning(f"Could not calculate capacity: {str(e)}")
-    
-    st.divider()
-    st.markdown("### Step 3: Test Corruption Recovery")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        corruption_type = st.selectbox(
-            "Simulate corruption type",
-            ["🖼️ JPEG Recompression", "🔀 Random Bit Flips", "📉 Noise Addition"],
-            help="Test how well the ECC recovers from different types of damage"
-        )
-        
-        if corruption_type == "🖼️ JPEG Recompression":
-            jpeg_quality = st.slider("JPEG Quality", 20, 95, 70)
-        elif corruption_type == "🔀 Random Bit Flips":
-            bit_flips = st.slider("Number of byte flips", 1, 20, 5)
-        else:
-            noise_level = st.slider("Noise level (0-255)", 1, 50, 10)
-    
-    with col2:
-        st.markdown("### Recovery Success Rate")
-        st.info("Shows how well the error correction recovers the original message after corruption")
     
     col1, col2, col3 = st.columns(3)
     with col2:
-        if image_file and message and st.button("🔧 Test ECC Recovery", use_container_width=True, type="primary"):
+        if image_file and message and st.button("🔧 Test ECC", use_container_width=True, type="primary"):
             try:
                 with st.spinner("Testing error correction..."):
                     from stegotool.modules.module6_redundancy.rs_wrapper import add_redundancy, recover_redundancy
-                    from stegotool.modules.module6_redundancy.corruption_simulator import random_byte_flips, recompress_and_reload
                     
-                    # Encode message with redundancy
                     message_bytes = message.encode()
                     encoded_with_ecc = add_redundancy(message_bytes, nsym=ecc_strength)
                     
                     st.divider()
-                    st.markdown("### ✅ Test Results")
+                    st.markdown("### ✅ ECC Test Results")
                     
                     col1, col2 = st.columns(2)
-                    
                     with col1:
                         st.markdown("**Original Message**")
                         st.code(message[:100] + ("..." if len(message) > 100 else ""))
@@ -1431,74 +1698,8 @@ def show_redundancy_section():
                         overhead = (len(encoded_with_ecc) - len(message_bytes)) / len(message_bytes) * 100
                         st.caption(f"Overhead: +{overhead:.1f}%")
                     
-                    st.divider()
+                    show_success(f"ECC encoding successful with {ecc_strength} parity bytes!")
                     
-                    # Simulate corruption
-                    try:
-                        if corruption_type == "🖼️ JPEG Recompression":
-                            st.markdown(f"**Simulating JPEG compression (Q={jpeg_quality})**")
-                            corrupted = random_byte_flips(encoded_with_ecc, n_flips=max(1, len(encoded_with_ecc)//50), seed=42)
-                            corruption_desc = f"JPEG quality reduced to {jpeg_quality}"
-                        elif corruption_type == "🔀 Random Bit Flips":
-                            st.markdown(f"**Simulating {bit_flips} byte flips**")
-                            corrupted = random_byte_flips(encoded_with_ecc, n_flips=bit_flips, seed=42)
-                            corruption_desc = f"{bit_flips} random bytes flipped"
-                        else:
-                            st.markdown(f"**Simulating noise level {noise_level}**")
-                            corrupted = random_byte_flips(encoded_with_ecc, n_flips=max(1, len(encoded_with_ecc)//20), seed=42)
-                            corruption_desc = f"Noise added (level {noise_level})"
-                        
-                        # Count errors
-                        error_count = sum(bin(a ^ b).count('1') for a, b in zip(encoded_with_ecc, corrupted))
-                        error_bytes = sum(1 for a, b in zip(encoded_with_ecc, corrupted) if a != b)
-                        
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("Corruption Type", corruption_desc[:15])
-                        with col2:
-                            st.metric("Byte Errors", error_bytes)
-                        with col3:
-                            st.metric("Bit Errors", error_count)
-                        
-                        st.divider()
-                        
-                        # Try recovery
-                        try:
-                            recovered_message = recover_redundancy(corrupted, nsym=ecc_strength)
-                            
-                            col1, col2 = st.columns(2)
-                            
-                            with col1:
-                                st.markdown("**Recovery Status**")
-                                st.success("✅ Message recovered successfully!")
-                                
-                                if recovered_message == message_bytes:
-                                    st.success("🎯 Recovered message matches original perfectly!")
-                                    recovery_rate = 100
-                                else:
-                                    st.warning("⚠️ Message recovered but contains differences")
-                                    recovery_rate = (len([a for a, b in zip(message_bytes, recovered_message) if a == b]) / len(message_bytes)) * 100 if message_bytes else 0
-                            
-                            with col2:
-                                st.markdown("**Recovered Message**")
-                                st.code(recovered_message.decode(errors='replace')[:100])
-                                st.metric("Recovery Rate", f"{recovery_rate:.1f}%")
-                            
-
-                            show_success(f"ECC successfully recovered message with {ecc_strength} parity bytes!")
-                            
-                        except Exception as recovery_error:
-                            st.error(f"❌ Recovery failed: {str(recovery_error)}")
-                            st.markdown("""
-                            **Why recovery failed:**
-                            - Too many errors for the chosen parity bytes
-                            - Try increasing parity bytes (e.g., 64 instead of 32)
-                            - The error correction can fix up to ~{} bytes of errors
-                            """.format(ecc_strength // 2))
-                    
-                    except Exception as corruption_error:
-                        show_error(f"Corruption simulation error: {str(corruption_error)}")
-                        
             except Exception as e:
                 show_error(f"ECC test error: {str(e)}")
                 logger.error(f"Redundancy test error: {str(e)}")
@@ -1506,30 +1707,24 @@ def show_redundancy_section():
     show_info_box(
         "Error Correction & Redundancy (Module 6)",
         """
-        This advanced module protects your messages from corruption. Even if the image gets
-        compressed, recompressed, or damaged, the error correction can recover the original message.
-        Uses Reed-Solomon codes for maximum protection.
+        This module protects your messages from corruption using Reed-Solomon codes.
+        Even if the image gets compressed or damaged, the error correction can recover the message.
         """,
         [
-            "Recover messages from corrupted or compressed images",
+            "Recover messages from corrupted images",
             "Add redundancy to protect against JPEG recompression",
             "Test error correction strength before embedding",
-            "Choose parity bytes based on expected corruption level",
-            "Perfect for long-term storage or unreliable channels"
+            "Choose parity bytes based on expected corruption level"
         ]
     )
+
 
 # ============================================================================
 #                           WATERMARKING SECTION
 # ============================================================================
 
 def show_watermarking_section():
-    """
-    Display the Watermarking interface.
-    
-    Currently supports:
-    1. Text-based Watermark (Visible) - Fully implemented
-    """
+    """Display the Watermarking interface."""
     st.subheader("💧 Watermarking")
     
     st.markdown("""
@@ -1539,44 +1734,8 @@ def show_watermarking_section():
     
     st.divider()
     
-    # Show the text watermark UI directly (no radio buttons needed)
-    _show_text_watermark_ui()
+    st.markdown("### 📝 Text-based Watermark")
     
-    # ========================================================================
-    # HELP SECTION
-    # ========================================================================
-    
-    show_info_box(
-        "Image Watermarking",
-        """
-        Watermarking is a technique used to embed identifying information into images.
-        This can be used for copyright protection, ownership verification, or branding.
-        The text watermark overlays visible text onto your image.
-        """,
-        [
-            "Add copyright notices to protect your work",
-            "Brand images with your name or company",
-            "Customize text color, size, position, and opacity",
-            "Works with PNG, JPG, and other image formats",
-            "Download watermarked images in PNG format"
-        ]
-    )
-
-
-def _show_text_watermark_ui():
-    """
-    Display the UI for text-based visible watermarking.
-    This is the fully implemented watermarking option.
-    """
-    st.markdown("### 📝 Text-based Watermark (Visible)")
-    
-    st.info("""
-    **How it works:** This method overlays text directly onto your image.
-    The watermark is visible to anyone viewing the image, making it ideal for
-    copyright notices, branding, or ownership claims.
-    """)
-    
-    # Create two columns for layout
     col1, col2 = st.columns(2)
     
     with col1:
@@ -1593,83 +1752,42 @@ def _show_text_watermark_ui():
     with col2:
         st.markdown("#### Watermark Settings")
         
-        # Watermark text input
         watermark_text = st.text_input(
             "Watermark Text",
             value="© Your Name",
             placeholder="Enter your watermark text",
-            max_chars=200,
-            help="The text that will appear on your image"
+            max_chars=200
         )
         
-        # Font size slider
-        font_size = st.slider(
-            "Font Size",
-            min_value=10,
-            max_value=100,
-            value=30,
-            step=5,
-            help="Adjust the size of the watermark text"
-        )
+        font_size = st.slider("Font Size", min_value=10, max_value=100, value=30, step=5)
         
-        # Position selector
         position = st.selectbox(
             "Position",
             options=["top-left", "center", "bottom-right"],
-            index=2,  # Default to bottom-right
-            help="Where to place the watermark on the image"
+            index=2
         )
         
-        # Opacity slider
-        opacity = st.slider(
-            "Opacity",
-            min_value=50,
-            max_value=255,
-            value=180,
-            step=10,
-            help="How visible the watermark should be (255 = fully opaque)"
-        )
+        opacity = st.slider("Opacity", min_value=50, max_value=255, value=180, step=10)
         
-        # Text color picker
-        text_color_hex = st.color_picker(
-            "Text Color",
-            value="#FFFFFF",
-            help="Choose the color of your watermark text"
-        )
-        
-        # Convert hex color to RGB tuple
+        text_color_hex = st.color_picker("Text Color", value="#FFFFFF")
         text_color = tuple(int(text_color_hex.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
     
     st.divider()
     
-    # ========================================================================
-    # APPLY WATERMARK BUTTON
-    # ========================================================================
-    
     col1, col2, col3 = st.columns(3)
     with col2:
-        apply_button = st.button(
-            "💧 Apply Watermark",
-            use_container_width=True,
-            type="primary",
-            disabled=not image_file
-        )
+        apply_button = st.button("💧 Apply Watermark", use_container_width=True, type="primary", disabled=not image_file)
     
-    if apply_button:
-        if not image_file:
-            show_error("Please upload an image first")
-        elif not watermark_text or watermark_text.strip() == "":
+    if apply_button and image_file:
+        if not watermark_text or watermark_text.strip() == "":
             show_error("Please enter watermark text")
         else:
             try:
                 with st.spinner("Applying watermark..."):
-                    # Import the watermarking function
                     from src.watermark.watermark import apply_text_watermark
                     
-                    # Load the original image
                     original_image = Image.open(image_file)
                     
-                    # Apply the watermark
                     watermarked_image = apply_text_watermark(
                         image=original_image,
                         watermark_text=watermark_text,
@@ -1680,16 +1798,14 @@ def _show_text_watermark_ui():
                     )
                     
                     st.divider()
-                    st.markdown("### ✅ Watermark Applied Successfully!")
+                    st.markdown("### ✅ Watermark Applied!")
                     
-                    # Display before and after
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.image(original_image, caption="Original Image", use_container_width=True)
+                        st.image(original_image, caption="Original", use_container_width=True)
                     with col2:
-                        st.image(watermarked_image, caption="Watermarked Image", use_container_width=True)
+                        st.image(watermarked_image, caption="Watermarked", use_container_width=True)
                     
-                    # Download button
                     buf = BytesIO()
                     watermarked_image.save(buf, format="PNG")
                     buf.seek(0)
@@ -1702,16 +1818,22 @@ def _show_text_watermark_ui():
                         use_container_width=True
                     )
                     
-                    # Log activity if user is logged in
-                    if hasattr(st.session_state, 'user_id') and st.session_state.user_id:
-                        log_activity(
-                            st.session_state.user_id,
-                            "WATERMARK",
-                            f"Applied text watermark: '{watermark_text[:30]}...'"
-                        )
-                    
-                    show_success("Watermark has been applied to your image!")
+                    show_success("Watermark applied successfully!")
                     
             except Exception as e:
                 show_error(f"Error applying watermark: {str(e)}")
                 logger.error(f"Watermark error: {str(e)}")
+    
+    show_info_box(
+        "Image Watermarking",
+        """
+        Watermarking adds visible text to your images for copyright protection or branding.
+        Customize the text, position, size, color, and opacity.
+        """,
+        [
+            "Add copyright notices to protect your work",
+            "Brand images with your name or company",
+            "Customize text color, size, position, and opacity",
+            "Download watermarked images in PNG format"
+        ]
+    )
