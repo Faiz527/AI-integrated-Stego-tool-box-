@@ -45,3 +45,10 @@ attrs==25.4.0
 pytest
 torch
 torchvision
+
+# Additional Dependencies
+bcrypt>=4.0.0
+
+# Optional Dependencies
+streamlit-lottie>=0.0.5
+requests>=2.28.0

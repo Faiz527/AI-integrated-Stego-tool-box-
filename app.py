@@ -30,7 +30,6 @@ from src.analytics.stats import (
     create_method_pie_chart,
     create_encode_decode_chart,
     create_method_comparison_chart,
-    create_encryption_chart,
     get_activity_dataframe,
     get_statistics_summary
 )
@@ -42,10 +41,10 @@ from src.ui.ui_components import (
     show_auth_section,
     show_batch_processing_section,
     show_pixel_selector_section,
-    show_steg_detector_section,
     show_redundancy_section,
     show_watermarking_section
 )
+from src.detect_stego import show_steg_detector_section  # <-- ADD THIS
 from src.ui.styles import apply_dark_theme
 
 # ============================================================================
