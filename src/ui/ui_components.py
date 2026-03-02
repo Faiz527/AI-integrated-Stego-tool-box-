@@ -1792,7 +1792,7 @@ def _apply_watermark(image_file, text, font_size, position, color, opacity):
     """Apply watermark to image."""
     try:
         with st.spinner("Applying watermark..."):
-            from src.watermark.watermark import apply_text_watermark
+            from src.Watermarking.watermark import apply_text_watermark
             
             original = Image.open(image_file)
             

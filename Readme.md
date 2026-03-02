@@ -1,632 +1,494 @@
-# ITR - Advanced Image Steganography System
+# 🔐 Image Steganography Toolkit (ITR)
 
-A comprehensive, modular image steganography application built with Streamlit that supports multiple steganography methods (LSB, Hybrid DCT, Hybrid DWT) with encryption, batch processing, error correction, pixel selection optimization, watermarking, and detailed analytics.
+Advanced web-based image steganography application with ML-based detection, batch processing, error correction, and watermarking capabilities.
 
-## 🎯 Features
-
-### Core Steganography Methods
-- **LSB (Least Significant Bit)**: Fast spatial domain steganography
-- **Hybrid DCT (Discrete Cosine Transform)**: JPEG-compatible frequency domain method using Y-channel
-- **Hybrid DWT (Haar Wavelet)**: Robust wavelet-based frequency domain encoding
-- **Pixel Selector (Module 3)**: ML-based intelligent pixel selection using PyTorch
-- **Redundancy/Error Correction (Module 6)**: Reed-Solomon ECC for corruption resistance
-
-### Advanced Features
-- ✅ **Intelligent Pixel Selection**: ML model selects optimal pixels for embedding
-- ✅ **Error Correction**: Reed-Solomon encoding for image corruption recovery
-- ✅ **Message Encryption**: XOR cipher with SHA-256 key derivation
-- ✅ **Method Comparison**: Side-by-side analysis of all methods with PSNR metrics
-- ✅ **Batch Processing**: Encode/decode multiple images in one operation
-- ✅ **Stego Detection**: Detect presence of hidden data in images
-- ✅ **Watermarking**: Add visible text watermarks for copyright protection
-- ✅ **Real-time Analytics**: Dashboard with detailed statistics and visualizations
-- ✅ **User Authentication**: Secure login with per-user operation tracking
-
-### Watermarking
-- 💧 **Text-based Watermark**: Add visible text overlays to images
-- 🎨 **Customizable Settings**: Font size, position, opacity, and color
-- 📍 **Position Options**: Top-left, center, or bottom-right placement
-- 🖼️ **Transparency Support**: Preserves PNG transparency when watermarking
-
-### Analytics Dashboard
-- 📊 **Operation Timeline**: Track operations over customizable time periods
-- 📈 **Method Distribution**: Usage statistics for LSB, DCT, and DWT
-- 📉 **Encode vs Decode**: Comparative statistics on operation types
-- 🔐 **Encryption Metrics**: Encrypted vs unencrypted message statistics
-- 💾 **Capacity Analysis**: Data size distribution and capacity visualization
-- 📋 **Activity Log**: Real-time log of recent user operations
-
-### User Management
-- User authentication with SHA-256 password hashing
-- Per-user operation tracking and statistics
-- Activity logging and audit trails
-- Session management with automatic logout
+![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-green.svg)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-13+-blue.svg)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 ---
 
-## 🛠️ Installation
+## 🌟 Features
 
-### Prerequisites
-- **Python 3.8+** (3.10+ recommended)
-- **PostgreSQL 9.1+** with proper credentials
-- **pip** (Python package manager)
-- **Virtual Environment** (strongly recommended)
+### Core Steganography
+- **🔐 LSB (Least Significant Bit)** - Fast, high capacity (~180KB)
+- **🛡️ Hybrid DCT** - Frequency domain, JPEG-safe (~60KB capacity)
+- **🔒 Hybrid DWT** - Wavelet-based, maximum security (~15KB capacity)
 
-### Step-by-Step Installation
+### Advanced Features
+- ✅ **User Authentication** - Secure login & registration
+- ✅ **Message Encryption** - Optional AES-256 encryption
+- ✅ **Batch Processing** - Encode/decode multiple images
+- ✅ **ML-based Detection** - Steganalysis using Logistic Regression
+- ✅ **Error Correction** - Reed-Solomon codes for data protection
+- ✅ **Watermarking** - Add visible watermarks to images
+- ✅ **Pixel Optimization** - Intelligent pixel selection
+- ✅ **Analytics** - Real-time activity tracking & statistics
+- ✅ **Dark Theme** - Professional SaaS-style UI
 
-1. **Clone or Download the Project**
+---
+
+## 📋 Requirements
+
+- **Python**: 3.10 or higher
+- **PostgreSQL**: 13 or higher
+- **RAM**: Minimum 4GB
+- **Disk Space**: 2GB for models and data
+
+---
+
+## 🚀 Installation
+
+### 1. Clone the Repository
+
 ```bash
-git clone https://github.com/yourusername/ITR-Steganography.git
+git clone https://github.com/Faiz527/AI-integrated-Stego-tool-box-.git
 cd ITR
 ```
 
-2. **Create Virtual Environment**
+### 2. Create Virtual Environment
+
 ```bash
-python -m venv .venv
-.venv\Scripts\activate  # Windows
-# or
-source .venv/bin/activate  # macOS/Linux
+# Windows
+python -m venv venv
+venv\Scripts\activate
+
+# macOS/Linux
+python3 -m venv venv
+source venv/bin/activate
 ```
 
-3. **Install Dependencies**
+### 3. Install Dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
-4. **Configure Environment Variables**
+### 4. Setup PostgreSQL Database
 
-Create `.env` file in project root:
 ```bash
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=stegnography
-DB_USER=postgres
-DB_PASSWORD=your_postgres_password
+# Create database (Windows)
+psql -U postgres -c "CREATE DATABASE steganography;"
+
+# Or manually in pgAdmin
+# Create new database named: steganography
 ```
 
-5. **Create PostgreSQL Database**
+### 5. Initialize Database Tables
+
 ```bash
-python create_db.py
+python src/db/create_db.py
 ```
 
-6. **Initialize Database Tables**
+### 6. Train ML Detection Model (Optional but Recommended)
+
 ```bash
-python -c "from src.db.db_utils import initialize_database; initialize_database()"
+# Quick training (100 samples, ~1-2 minutes)
+python src/detect_stego/train_ml_detector.py --samples 100
+
+# Production training (500 samples, ~5-10 minutes)
+python src/detect_stego/train_ml_detector.py --samples 500
+
+# High quality (1000 samples, ~20-30 minutes)
+python src/detect_stego/train_ml_detector.py --samples 1000
 ```
 
-7. **Test Database Connection**
+### 7. Run the Application
+
 ```bash
-python test_db.py
+# Use streamlit_app.py (recommended)
+streamlit run streamlit_app.py
+
+# The app will open at http://localhost:8501
 ```
+
+The app will open at `http://localhost:8501`
 
 ---
 
-## 🚀 Running the Application
+## 🎯 Quick Start
 
-Start the Streamlit app:
-```bash
-streamlit run app.py
-```
+### Encoding a Message
 
-The app will open at: `http://localhost:8501`
+1. **Login** → Create account or sign in
+2. **Navigate** → Click "🔐 Encode"
+3. **Upload** → Select your image (PNG recommended)
+4. **Enter** → Type your secret message
+5. **Configure** → Select method (LSB/DCT/DWT)
+6. **Encrypt** → Optionally add AES-256 encryption
+7. **Encode** → Click "🔐 Encode Message"
+8. **Download** → Save the encoded image
+
+### Decoding a Message
+
+1. **Navigate** → Click "🔍 Decode"
+2. **Upload** → Select the encoded image
+3. **Configure** → If encrypted, enter the password
+4. **Decode** → Click "🔓 Extract Message"
+5. **View** → Read the hidden message
+
+### Batch Processing
+
+1. **Navigate** → Click "⚙️ Batch Processing"
+2. **Choose** → Basic or Advanced mode
+3. **Upload** → Multiple images or ZIP file
+4. **Configure** → Set method and message
+5. **Process** → Run batch operation
+6. **Download** → Get results + report
+
+### Detecting Steganography
+
+1. **Navigate** → Click "🔍 Detect Steganography"
+2. **Upload** → Image to analyze
+3. **Configure** → Set detection sensitivity
+4. **Analyze** → Click "🔎 Analyze Image"
+5. **Review** → Check detection score & metrics
 
 ---
 
-## 📁 Project Structure
+## 🏗️ Project Structure
 
 ```
 ITR/
-├── .env                              # Environment variables (PostgreSQL)
-├── .gitignore                        # Git ignore rules
-├── .streamlit/
-│   ├── config.toml                  # Streamlit configuration
-│   └── secrets.toml                 # Optional: Streamlit secrets for deployment
-├── requirements.txt                 # Python dependencies
-├── README.md                        # This file
+├── streamlit_app.py              # Main entry point
+├── requirements.txt              # Dependencies
+├── README.md                     # Documentation
 │
-├── app.py                           # Main Streamlit application entry point
-├── streamlit_app.py                # Alternative Streamlit entry point
-├── create_db.py                    # PostgreSQL database initialization
-├── test_db.py                      # Database connection test script
-├── test_steganography.py           # Steganography methods unit tests
-├── demo_hide_extract.py            # Demo script with full workflow
-├── make_demo_images.py             # Generate synthetic test images
+├── src/
+│   ├── db/                      # Database operations
+│   │   ├── create_db.py         # Database initialization
+│   │   ├── db_utils.py          # DB helper functions
+│   │   └── test_db.py           # Database tests
+│   │
+│   ├── stego/                   # Steganography methods
+│   │   ├── lsb_steganography.py    # LSB method
+│   │   ├── dct_steganography.py    # Hybrid DCT method
+│   │   ├── dwt_steganography.py    # Hybrid DWT method
+│   │   └── test_steganography.py   # Method tests
+│   │
+│   ├── encryption/              # Encryption module
+│   │   └── encryption.py        # AES-256 encryption
+│   │
+│   ├── detect_stego/            # ML-based detection
+│   │   ├── ml_detector.py       # Logistic Regression model
+│   │   ├── ui_section.py        # Detection UI
+│   │   ├── train_ml_detector.py # Model training script
+│   │   └── models/              # Trained models (pkl files)
+│   │
+│   ├── batch_processing/        # Batch operations
+│   │   ├── batch_encode.py      # Batch encoding
+│   │   ├── batch_decode.py      # Batch decoding
+│   │   └── batch_utils.py       # Batch helpers
+│   │
+│   ├── analytics/               # Statistics & charts
+│   │   └── stats.py             # Analytics functions
+│   │
+│   ├── ui/                      # User interface
+│   │   ├── ui_components.py     # Main UI sections
+│   │   ├── reusable_components.py  # Reusable widgets
+│   │   ├── config_dict.py       # UI configuration
+│   │   ├── styles.py            # CSS styling
+│   │   └── __init__.py          # Module exports
+│   │
+│   └── Watermarking/            # Watermarking module
+│       └── watermark.py         # Text watermarking
 │
-├── src/                            # Main source code package
-│   ├── __init__.py
-│   │
-│   ├── stego/                      # ⭐ Core Steganography Engine
-│   │   ├── __init__.py
-│   │   ├── lsb_steganography.py           # LSB spatial domain method
-│   │   ├── dct_steganography.py           # Hybrid DCT frequency domain
-│   │   └── dwt_steganography.py           # Hybrid DWT wavelet method
-│   │
-│   ├── watermark/                  # 💧 Watermarking Module
-│   │   ├── __init__.py
-│   │   └── watermark.py            # Text watermark implementation
-│   │
-│   ├── db/                         # 🗄️ Database Layer
-│   │   ├── __init__.py
-│   │   ├── db_utils.py             # PostgreSQL operations & user management
-│   │   └── db_utils_minimal.py     # Minimal database utilities
-│   │
-│   ├── analytics/                  # 📊 Analytics & Statistics Engine
-│   │   ├── __init__.py
-│   │   └── stats.py                # Chart generation & statistics calculations
-│   │
-│   ├── encryption/                 # 🔐 Encryption Module
-│   │   ├── __init__.py
-│   │   └── encryption.py           # XOR cipher with SHA-256 key derivation
-│   │
-│   ├── batch_processing/           # ⚙️ Batch Processing Module
-│   │   ├── __init__.py
-│   │   ├── batch_encoder.py        # Batch encoding operations
-│   │   ├── controller.py           # Batch processing controller
-│   │   ├── packet_handler.py       # Message packetization for distributed steganography
-│   │   ├── zip_handler.py          # ZIP archive extraction and validation
-│   │   └── report_generator.py     # Report generation (JSON/CSV)
-│   │
-│   └── ui/                         # 🎨 User Interface Components
-│       ├── __init__.py
-│       ├── styles.py               # Dark theme CSS & styling
-│       ├── config_dict.py          # UI text and labels configuration
-│       ├── reusable_components.py  # Common UI components
-│       └── ui_components.py        # Streamlit page sections
-│
-├── stegotool/                      # 🧠 Advanced AI/ML Modules
-│   ├── __init__.py
-│   │
-│   ├── data/                       # Training data and models
-│   │   └── module3/
-│   │       └── sample.npz          # Sample training data
-│   │
-│   ├── models/                     # Pre-trained models
-│   │   └── module3_pixel_selector/
-│   │       └── best.pth            # Trained PyTorch model
-│   │
-│   └── modules/
-│       ├── module3_pixel_selector/         # 🎯 Intelligent Pixel Selection
-│       │   ├── __init__.py
-│       │   ├── selector_baseline.py        # Heuristic pixel selection
-│       │   ├── selector_model.py           # PyTorch neural network model
-│       │   ├── selector_model_infer.py     # Model inference & predictions
-│       │   ├── selector_utils.py           # Utility functions
-│       │   ├── generate_training_data.py   # Training data generation
-│       │   ├── generate_labels_robust.py   # Robust label generation
-│       │   ├── train_selector_model.py     # Model training script
-│       │   └── test_selector.py            # Unit tests
-│       │
-│       └── module6_redundancy/             # 🛡️ Error Correction Module
-│           ├── __init__.py
-│           ├── rs_wrapper.py               # Reed-Solomon error correction
-│           ├── capacity_checker.py         # Payload capacity validation
-│           ├── corruption_simulator.py     # Image corruption testing
-│           ├── test_rs_wrapper.py          # Reed-Solomon unit tests
-│           └── test_rs_stress.py           # Stress testing
-│
-└── data/                           # 📦 Data directories
-    ├── input/
-    │   ├── images/                 # Input images for processing
-    │   └── zips/                   # ZIP archives for batch processing
-    ├── output/
-    │   ├── encoded/                # Encoded output images
-    │   ├── decoded/                # Decoded messages
-    │   ├── batches/                # Batch processing results
-    │   └── reports/                # Processing reports (JSON/CSV)
-    └── temp/                       # Temporary files
-
-├── logs/                           # Application logs
-
-└── __pycache__/                    # Python cache (ignored)
-```
-
-### Module Organization
-
-**`src/stego/`** - Steganography Engine
-- Independent implementations of LSB, DCT, and DWT methods
-- Each method has encode/decode functions
-- No external dependencies between methods
-
-**`src/watermark/`** - Watermarking Module
-- Text-based visible watermarking
-- Customizable font size, position, opacity, and color
-- Preserves image transparency for PNG files
-
-**`src/db/`** - Database Layer
-- PostgreSQL connection management
-- User authentication with SHA-256 password hashing
-- Operation logging (encode/decode history)
-- Statistics retrieval for analytics
-
-**`src/analytics/`** - Analytics & Visualization
-- Chart generation (Plotly)
-- Statistics calculations
-- Activity logs and dataframes
-- Real-time metrics
-
-**`src/encryption/`** - Message Security
-- XOR cipher with SHA-256 key derivation
-- Symmetric encryption/decryption
-- Optional message protection
-
-**`src/ui/`** - Web Interface
-- Streamlit UI components
-- Dark theme styling
-- Authentication section
-- Encode/Decode sections
-- Comparison, Statistics, and Watermarking sections
-
-**`src/batch_processing/`** - Batch Processing Module
-- **batch_encoder.py**: Batch encoding with two modes (Uniform/Packetized)
-- **controller.py**: Orchestrates batch workflow (ZIP extraction, validation, encoding, reporting)
-- **packet_handler.py**: Message packetization for distributed steganography
-- **zip_handler.py**: ZIP archive extraction and validation
-- **report_generator.py**: JSON/CSV report generation with timing benchmarks
-
----
-
-## 🔐 Usage Guide
-
-### 1. **Create Account**
-- Click "Create New Account" on the login screen
-- Enter username and password
-- Account is created in PostgreSQL database
-
-### 2. **Encode Message**
-- Go to **Encode** tab
-- Select steganography method (LSB, DCT, or DWT)
-- Upload cover image (PNG/JPG)
-- Enter secret message
-- (Optional) Enable encryption with AES-256
-- Click "Encode Message"
-- Download the encoded image
-
-### 3. **Decode Message**
-- Go to **Decode** tab
-- Upload encoded image
-- Select the method used for encoding
-- Click "Decode Message"
-- View extracted message
-- (If encrypted) Message is automatically decrypted
-
-### 4. **Compare Methods**
-- Go to **Comparison** tab
-- Upload cover image
-- Enter secret message
-- View side-by-side comparison of all three methods
-- See PSNR (Peak Signal-to-Noise Ratio) for each method
-
-### 5. **View Analytics**
-- Go to **Statistics** tab
-- View operation timeline (last 7 days)
-- See method distribution pie chart
-- Check encode vs decode statistics
-- Monitor encryption usage
-- View data size distribution
-- See recent activity log
-
-### 6. **Pixel Selector**
-- Go to **Pixel Selector** tab
-- Upload an image for analysis
-- Configure payload bits, patch size, and LSB bits
-- Analyze to find optimal pixels for hiding data
-- View visualization of best pixel locations
-
-### 7. **Detect Stego**
-- Go to **Detect Stego** tab
-- Upload a suspicious image
-- Adjust detection sensitivity
-- Analyze image for hidden content
-- View detection score and metrics
-
-### 8. **Error Correction**
-- Go to **Error Correction** tab
-- Upload image and enter message
-- Configure ECC strength (parity bytes)
-- Check capacity and test corruption recovery
-- Simulate JPEG recompression, bit flips, or noise
-
-### 9. **Watermarking**
-- Go to **Watermarking** tab
-- Upload image to watermark
-- Enter watermark text (e.g., "© Your Name")
-- Customize font size, position, opacity, and color
-- Click "Apply Watermark"
-- Download watermarked image
-
-### 10. **Batch Processing**
-- Go to **Batch Processing** tab
-- Choose between **Encode** or **Decode** sub-tabs
-
-#### Batch Encode
-- **Basic Mode (Uniform)**: Same message embedded in all images
-  - Each image can be decoded independently
-  - Good for distributing the same secret to multiple recipients
-- **Advanced Mode (Packetized)**: Message split across images
-  - Message is divided into packets, one per image
-  - ALL images required to reconstruct the original message
-  - More secure - single image reveals nothing useful
-
-#### Batch Decode
-- Upload ZIP file or multiple images
-- System auto-detects encoding mode (Basic vs Advanced)
-- For Basic Mode: Each message displayed separately
-- For Advanced Mode: Reconstructs complete message from all packets
-- Supports encrypted message decryption
-
----
-
-## 🔧 Technical Details
-
-### Steganography Methods
-
-#### LSB (Least Significant Bit)
-- **Domain**: Spatial
-- **Capacity**: ~2.5% of image size
-- **Detection Resistance**: Low
-- **Computational Cost**: Very Low
-- **Quality**: Excellent (PSNR > 50 dB)
-
-#### Hybrid DCT
-- **Domain**: Frequency (Y-channel only)
-- **Capacity**: ~1.5% of image size
-- **Detection Resistance**: Medium
-- **Computational Cost**: Medium
-- **Quality**: Good (PSNR > 40 dB)
-
-#### Hybrid DWT (Haar Wavelet)
-- **Domain**: Frequency (Wavelet)
-- **Capacity**: ~2% of image size
-- **Detection Resistance**: High
-- **Computational Cost**: Medium-High
-- **Quality**: Very Good (PSNR > 45 dB)
-
-### Watermarking
-
-#### Text-based Watermark
-- **Type**: Visible overlay
-- **Customization**: Font size (10-100), position, opacity (50-255), color
-- **Positions**: Top-left, Center, Bottom-right
-- **Transparency**: Preserves PNG alpha channel
-- **Output Format**: PNG
-
-### Encryption
-- **Algorithm**: XOR cipher with SHA-256 key derivation
-- **Key Size**: 256-bit (derived from password)
-- **Security**: Suitable for steganography; recommended AES-256 for highly sensitive data
-- **Performance**: Very fast (negligible overhead)
-
-### Database Schema
-
-**users**
-```sql
-user_id (PK) | username | password_hash | created_at
-```
-
-**operations**
-```sql
-operation_id (PK) | user_id (FK) | operation_type | method | 
-data_size | is_encrypted | status | created_at
-```
-
-**activity_log**
-```sql
-activity_id (PK) | user_id (FK) | action | details | created_at
+└── .env                         # Environment variables (create this)
 ```
 
 ---
 
-## 📊 Analytics & Statistics
+## 🔐 Environment Setup
 
-The application tracks:
-- **Total Operations**: Count of all encode/decode operations
-- **Method Usage**: Distribution of LSB, DCT, DWT usage
-- **Encryption Rate**: Percentage of operations using encryption
-- **Operation Timeline**: Operations per day over 7 days
-- **Data Size Distribution**: Breakdown of message sizes
-- **User Activity**: Recent operations by all users
+Create a `.env` file in the project root:
+
+```env
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=steganography
+DB_USER=postgres
+DB_PASSWORD=your_password
+
+# Encryption
+ENCRYPTION_KEY=your_secret_key_here
+
+# ML Model Path
+MODEL_PATH=src/detect_stego/models/stego_detector_lr.pkl
+```
+
+---
+
+## 📊 Database Schema
+
+The application uses PostgreSQL with the following main tables:
+
+- **users** - User authentication data
+- **operations** - Encoding/decoding operations log
+- **activity** - User activity tracking
+
+---
+
+## 🤖 ML Detection Model
+
+### Training Overview
+
+The detection model uses **Logistic Regression** to identify steganographic content by analyzing:
+
+- LSB entropy and statistics
+- DCT coefficient patterns
+- DWT wavelet coefficients
+- Chi-square statistics
+- Autocorrelation metrics
+- ASCII ratio analysis
+- High-frequency energy
+- Histogram variance
+
+### Model Performance
+
+| Training Samples | Time | Accuracy | Use Case |
+|-----------------|------|----------|----------|
+| 100 | 1-2 min | 80-85% | Testing |
+| 500 | 5-10 min | 85-90% | **Recommended** |
+| 1000 | 20-30 min | 88-93% | Production |
+
+### Train Custom Model
+
+```bash
+# Standard training
+python src/detect_stego/train_ml_detector.py --samples 500
+
+# With custom output path
+python src/detect_stego/train_ml_detector.py --samples 1000 -o ./models/custom_detector.pkl
+
+# View help
+python src/detect_stego/train_ml_detector.py --help
+```
 
 ---
 
 ## 🧪 Testing
 
-Run steganography tests:
+### Run Unit Tests
+
 ```bash
-python test_steganography.py
+# Test database operations
+python src/db/test_db.py
+
+# Test steganography methods
+python src/stego/test_steganography.py
 ```
 
-Test database connection:
+---
+
+## 📈 Analytics Dashboard
+
+The Statistics section provides:
+
+- **Activity Timeline** - Encode/decode operations over time
+- **Method Distribution** - Pie chart of methods used
+- **Message Sizes** - Distribution of message lengths
+- **Encryption Usage** - Encrypted vs plain messages
+- **Activity History** - Searchable operation log
+
+---
+
+## 🛡️ Security Features
+
+✅ **User Authentication** - Password-protected accounts  
+✅ **Message Encryption** - Optional AES-256 encryption  
+✅ **Secure Database** - PostgreSQL with prepared statements  
+✅ **Session Management** - Secure session state handling  
+✅ **Error Correction** - Reed-Solomon codes  
+✅ **Imperceptibility** - Multiple embedding methods  
+
+---
+
+## ⚠️ Important Notes
+
+### Best Practices
+
+1. **Use PNG Format** - JPEG compression destroys hidden data
+2. **Keep Originals** - Save original images for comparison
+3. **Enable Encryption** - Always encrypt sensitive messages
+4. **Don't Resize** - Resizing corrupts hidden messages
+5. **Secure Passwords** - Use strong encryption passwords
+
+### Limitations
+
+| Limitation | Details |
+|-----------|---------|
+| JPEG Support | Limited for DWT/DCT methods |
+| File Size | Max image: 50MB recommended |
+| Message Capacity | Depends on method (15KB-180KB) |
+| Database | PostgreSQL only (v13+) |
+| Browser | Modern browsers (Chrome, Firefox, Edge) |
+
+---
+
+## 🔧 Troubleshooting
+
+### Issue: "Import Error"
+
 ```bash
-python test_db.py
+# Make sure you're in the project root directory
+cd c:\Users\faizn\OneDrive\Desktop\Projects\ITR
+
+# Reinstall dependencies
+pip install -r requirements.txt --force-reinstall
 ```
 
----
+### Issue: "Database Connection Error"
 
-## ⚙️ Configuration
-
-### Streamlit Configuration (`.streamlit/config.toml`)
-```toml
-[theme]
-primaryColor = "#238636"
-backgroundColor = "#0E1117"
-secondaryBackgroundColor = "#161B22"
-textColor = "#C9D1D9"
-font = "sans serif"
-
-[client]
-showErrorDetails = true
-showWarningOnDirectExecution = true
-
-[logger]
-level = "info"
-
-[server]
-port = 8501
-headless = true
-```
-
-### Environment Variables (`.env`)
 ```bash
-DB_HOST=localhost              # PostgreSQL host
-DB_PORT=5432                   # PostgreSQL port
-DB_NAME=stegnography           # Database name
-DB_USER=postgres               # PostgreSQL username
-DB_PASSWORD=your_password      # PostgreSQL password
+# Check PostgreSQL is running
+# Windows: Services → PostgreSQL
+# macOS: brew services list
+# Linux: sudo systemctl status postgresql
+
+# Verify .env file has correct credentials
+cat .env
 ```
 
-### Secrets Configuration (`.streamlit/secrets.toml`)
-Optional for cloud deployments:
-```toml
-[postgres]
-host = "your_host"
-port = "5432"
-dbname = "your_db"
-user = "your_user"
-password = "your_password"
-sslmode = "require"
+### Issue: "No ML Model Found"
+
+```bash
+# Train the detection model
+python src/detect_stego/train_ml_detector.py --samples 500
+
+# Check model exists
+ls src/detect_stego/models/
+```
+
+### Issue: "Streamlit Not Found"
+
+```bash
+# Activate virtual environment
+venv\Scripts\activate  # Windows
+source venv/bin/activate  # macOS/Linux
+
+# Reinstall streamlit
+pip install streamlit==1.28.1
 ```
 
 ---
 
-## 🐛 Troubleshooting
+## 📚 Technical Documentation
 
-### Database Connection Failed
-- Ensure PostgreSQL is running: `Get-Service postgresql-x64-*`
-- Verify database exists: `psql -U postgres -h localhost -l`
-- Check `.env` credentials are correct
+### Steganography Methods
 
-### Import Errors
-- Ensure virtual environment is activated
-- Run `pip install -r requirements.txt`
-- Verify all files are in correct locations
+**LSB (Least Significant Bit)**
+- Embeds data in the least significant bits of pixel values
+- Spatial domain method
+- High capacity, low security
+- Fast encoding/decoding
 
-### Image Upload Issues
-- Ensure image is PNG or JPG format
-- Image size should be at least 100x100 pixels
-- File size should be less than 100 MB
+**Hybrid DCT (Discrete Cosine Transform)**
+- Frequency domain method
+- Converts to YCbCr, applies DCT to Y channel
+- JPEG-compatible
+- Medium capacity, medium security
 
-### Encoding/Decoding Errors
-- Verify correct method is selected for decoding
-- Ensure image format matches (no format conversion)
-- Check that image hasn't been compressed or modified
+**Hybrid DWT (Discrete Wavelet Transform)**
+- Wavelet transform based
+- Applies Haar wavelets to image blocks
+- Highest security, lowest capacity
+- Resistant to various attacks
 
-### Watermarking Issues
-- For transparent PNGs, the watermark preserves transparency
-- If text is not visible, try changing the text color
-- Adjust opacity for better visibility
+### Encryption
 
----
+- **Algorithm**: AES-256 (Cryptodome)
+- **Mode**: CBC with PKCS7 padding
+- **Key Derivation**: PBKDF2 with SHA256
 
-## 📈 Performance Metrics
+### Detection
 
-Typical performance on modern hardware:
-
-| Operation | Time | Memory |
-|-----------|------|--------|
-| LSB Encode (1MB) | 0.5s | 50MB |
-| DCT Encode (1MB) | 1.2s | 80MB |
-| DWT Encode (1MB) | 1.5s | 100MB |
-| Decode Any Method | 0.3s | 40MB |
-| Watermark (1MB) | 0.2s | 30MB |
+- **Algorithm**: Logistic Regression
+- **Features**: 9 statistical measures
+- **Accuracy**: 85-93% (depends on training data)
 
 ---
 
-## 🔒 Security Considerations
+## 📝 Usage Examples
 
-- ✅ Passwords hashed with SHA-256
-- ✅ XOR encryption with SHA-256 key derivation for message protection
-- ✅ HTTPS recommended for production deployment
-- ✅ Database access controlled via credentials
-- ✅ No sensitive data in logs
+### Python API Usage
 
----
+```python
+from PIL import Image
+from src.stego.lsb_steganography import encode_image, decode_image
+from src.encryption.encryption import encrypt_message, decrypt_message
 
-## 📝 License
+# Encode
+image = Image.open("cover.png")
+encoded = encode_image(image, "Secret message")
+encoded.save("encoded.png")
 
-This project is provided as-is for educational purposes.
+# Decode
+encoded = Image.open("encoded.png")
+message = decode_image(encoded)
+print(message)  # "Secret message"
 
----
+# With encryption
+encrypted_msg = encrypt_message("Secret", "password123")
+encoded = encode_image(image, encrypted_msg)
 
-## 👨‍💻 Developer Information
-
-**Application**: Image Steganography & Watermarking (ITR)
-**Version**: 2.0.0
-**Built with**: 
-- Streamlit (Frontend)
-- PostgreSQL (Database)
-- Python 3.10+
-
-**Key Libraries**:
-- `Pillow` - Image processing & watermarking
-- `NumPy/SciPy` - Scientific computing
-- `PyWavelets` - Wavelet transforms
-- `Plotly` - Interactive visualizations
-- `psycopg2` - PostgreSQL adapter
-- `cryptography` - Encryption
-- `reedsolo` - Reed-Solomon error correction
+# Decrypt
+decrypted_msg = decrypt_message(encrypted_msg, "password123")
+```
 
 ---
 
-## 🚀 Future Enhancements
+## 🤝 Contributing
 
-Potential improvements:
-- [ ] Quality Metrics Module - PSNR, MSE, SSIM calculations
-- [ ] Auto-detection Module - Automatically select best method per image
-- [ ] Additional image formats (BMP, TIFF, WebP, etc.)
-- [ ] Video steganography support
-- [ ] Real-time image preview during encoding
-- [ ] Report generation (PDF, CSV, JSON)
-- [ ] Advanced steganalysis detection
-- [ ] Cloud storage integration (AWS S3, Google Drive)
-- [ ] Mobile app support
-- [ ] Docker containerization
-- [ ] Distributed computing for large-scale batch processing
-- [ ] LSB-based invisible watermarking
-- [ ] Alpha blending watermark with logo images
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ---
 
-## 📚 Module Development Guide
+## 📄 License
 
-### Adding New Steganography Method
+This project is licensed under the MIT License - see LICENSE file for details.
 
-1. Create new file in `src/stego/` (e.g., `new_method_steganography.py`)
-2. Implement `encode_method(img, secret_text)` and `decode_method(img)`
-3. Export functions in `src/stego/__init__.py`
-4. Add UI section in `src/ui/ui_components.py`
-5. Update imports in `app.py`
+---
 
-### Adding New Watermarking Method
+## 👨‍💼 Author
 
-1. Add function in `src/watermark/watermark.py`
-2. Export in `src/watermark/__init__.py`
-3. Add UI section in `show_watermarking_section()` in `ui_components.py`
+**Faiz Ahmed**
+- GitHub: [@Faiz527](https://github.com/Faiz527)
+- Email: faiz527@example.com
 
-### Adding New Chart/Statistic
+---
 
-1. Create function in `src/analytics/stats.py`
-2. Export in `src/analytics/__init__.py`
-3. Import in `src/ui/ui_components.py`
-4. Add UI element in `show_statistics_section()`
+## 🌐 Live Demo
 
-### Database Operations
-
-1. Add function in `src/db/db_utils.py`
-2. Export in `src/db/__init__.py`
-3. Call from appropriate UI component
+Check out the live application: [ITR Steganography](https://itr-stego.streamlit.app)
 
 ---
 
 ## 📞 Support
 
-For issues or questions:
-1. Check the troubleshooting section
-2. Review error messages carefully
-3. Verify all dependencies are installed
-4. Test database connection with `test_db.py`
+For issues, questions, or suggestions:
+- Open an issue on GitHub
+- Check existing documentation
+- Review the troubleshooting section
 
 ---
 
-**Last Updated**: February 6, 2026
-**Project Structure**: Modular Architecture v2.0
-**Latest Changes**: Fixed batch decode to display decoded messages, added is_packetized_message function
+## 🎉 Acknowledgments
+
+- Streamlit for the amazing web framework
+- scikit-learn for ML capabilities
+- The cryptography community for best practices
+- PostgreSQL for reliable database management
+
+---
+
+**Last Updated**: March 2, 2026  
+**Version**: 2.0  
+**Status**: Active Development ✅

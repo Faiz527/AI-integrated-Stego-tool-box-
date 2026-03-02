@@ -1,16 +1,15 @@
 """
 Watermarking Module
 ====================
-Implements different watermarking techniques:
-1. Text-based Watermark (Visible) - IMPLEMENTED
-2. LSB Watermark (Invisible) - TODO
-3. Alpha Blending Watermark (Semi-visible) - TODO
-
-This module is designed to be beginner-friendly and suitable for academic evaluation.
+Implements various watermarking techniques for images.
 """
+import logging
+from typing import Optional, Tuple
 
-from PIL import Image, ImageDraw, ImageFont
 import numpy as np
+from PIL import Image, ImageDraw, ImageFont
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
