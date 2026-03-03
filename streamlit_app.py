@@ -73,6 +73,13 @@ if "user_id" not in st.session_state:
 #                           MAIN APPLICATION
 # ============================================================================
 
+@st.cache_data
+def _load_readme(path: Path) -> bytes:
+    """Load and cache README file contents."""
+    with open(path, "rb") as f:
+        return f.read()
+
+
 def main():
     """Main application logic."""
     
@@ -103,6 +110,19 @@ def main():
             st.rerun()
         
         st.sidebar.divider()
+        
+        # README download button
+        readme_path = BASE_PATH / "README.md"
+        if readme_path.exists():
+            readme_bytes = _load_readme(readme_path)
+            st.sidebar.download_button(
+                label="📄 Download README",
+                data=readme_bytes,
+                file_name="README.md",
+                mime="text/markdown",
+                use_container_width=True
+            )
+            st.sidebar.divider()
         
         # Navigation
         page = st.sidebar.radio(
