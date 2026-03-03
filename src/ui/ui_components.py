@@ -5,19 +5,20 @@ Contains the main section components for the application interface.
 Professional SaaS-style design with consistent styling across all tabs.
 """
 
-import streamlit as st
 import logging
-from io import BytesIO
-from PIL import Image
+import time
 import pandas as pd
 import numpy as np
-import time
+from io import BytesIO
+from PIL import Image
+import streamlit as st
 
 from src.stego.lsb_steganography import encode_image as lsb_encode, decode_image as lsb_decode
 from src.stego.dct_steganography import encode_dct as dct_encode, decode_dct as dct_decode
 from src.stego.dwt_steganography import encode_dwt as dwt_encode, decode_dwt as dwt_decode
 from src.encryption.encryption import encrypt_message, decrypt_message
 from src.db.db_utils import log_activity
+from src.Watermarking.ui_section import show_watermarking_section as _show_watermarking_section
 from .reusable_components import (
     create_text_input, create_text_area, create_file_uploader,
     create_method_selector, create_checkbox, show_error, show_success,

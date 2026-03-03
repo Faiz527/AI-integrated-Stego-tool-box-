@@ -1,186 +1,171 @@
-# AI-integrated Steganography Toolbox
+# 🕵️ AI-Integrated Stego Tool Box
 
-A professional-grade steganography and detection toolkit with AI/ML capabilities for hiding and detecting secret messages in images.
-
-![Python](https://img.shields.io/badge/Python-3.8+-blue)
-![Streamlit](https://img.shields.io/badge/Streamlit-Latest-green)
-![License](https://img.shields.io/badge/License-MIT-yellow)
-![Status](https://img.shields.io/badge/Status-Active_Development-brightgreen)
+A comprehensive web-based image steganography application built with Streamlit that supports multiple steganography methods (LSB, Hybrid DCT, Hybrid DWT) with **AES-256-CBC encryption**, batch processing, and detailed analytics.
 
 ---
 
-## 📋 Table of Contents
+## 🎯 Features
 
-- [Features](#features)
-- [Technology Stack](#technology-stack)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Project Structure](#project-structure)
-- [Module Documentation](#module-documentation)
-- [Usage Examples](#usage-examples)
-- [Security Features](#security-features)
-- [Model Performance](#model-performance)
-- [Recent Updates](#recent-updates)
-- [Contributing](#contributing)
+### Steganography Methods
+- **LSB (Least Significant Bit)**: Spatial domain steganography with fast processing
+- **Hybrid DCT (Discrete Cosine Transform)**: Frequency domain method using Y-channel
+- **Hybrid DWT (Discrete Wavelet Transform)**: Wavelet-based encoding using Haar wavelets
 
----
+### Core Functionality
+- ✅ **Message Encoding**: Hide secret messages in images using three different methods
+- ✅ **Message Decoding**: Extract hidden messages from encoded images
+- ✅ **AES-256-CBC Encryption**: Military-grade encryption for message protection
+- ✅ **Method Comparison**: Side-by-side comparison of all three steganography methods
+- ✅ **Batch Processing**: Encode/decode multiple images efficiently via ZIP or multi-upload
+- ✅ **Real-time Analytics**: Track operations and view detailed statistics
 
-## ✨ Features
+### Security Features
+- 🔐 **AES-256-CBC Encryption**: 256-bit symmetric encryption in CBC mode
+- 🔑 **PBKDF2-HMAC-SHA256**: Secure password-based key derivation (100,000 iterations)
+- 🛡️ **Authenticated Encryption**: HMAC-SHA256 for tamper detection (encrypt-then-MAC)
+- 🎲 **Random IV/Salt**: 16-byte random salt and IV per encryption
+- ⏱️ **Constant-Time Comparison**: Resistance to timing attacks
 
-### 🔐 Steganography Encoding
-- **LSB (Least Significant Bit)** - Fast, simple, widely used
-- **DCT (Discrete Cosine Transform)** - Frequency domain hiding
-- **DWT (Discrete Wavelet Transform)** - Wavelet-based embedding
+### Analytics Dashboard
+- 📊 **Operation Timeline**: Track operations over the last 7 days
+- 📈 **Method Distribution**: Pie chart showing usage of LSB, DCT, and DWT
+- 📉 **Encode vs Decode**: Bar chart comparing encode/decode operations
+- 🔐 **Encryption Usage**: Statistics on encrypted vs unencrypted messages
+- 💾 **Data Size Distribution**: Visualization of operation data sizes
+- 📋 **Activity Log**: Real-time log of recent user operations
 
-### 🔍 Steganography Detection
-- **Random Forest ML Model** - 200 estimators, 9 statistical features
-- **Real-time Analysis** - ~100-500ms per image
-- **Feature Importance** - Understand detection decisions
-- **Sensitivity Adjustment** - 1-10 scale for fine-tuning
-
-### 🔒 Encryption
-- **AES-256-GCM** - NIST-approved authenticated encryption
-- **PBKDF2 Key Derivation** - 480k iterations (2023 standard)
-- **Message Authentication** - Prevent tampering detection
-- **Random Salt & IV** - Per-message randomization
-
-### 👥 User Management
-- **Secure Authentication** - Password hashing (bcrypt)
-- **Activity Logging** - Track all operations
-- **Multi-user Support** - Isolated user sessions
-
-### 📊 Batch Processing
-- **Bulk Encoding** - Process multiple images
-- **Bulk Detection** - Analyze image collections
-- **Progress Tracking** - Real-time status updates
+### User Management
+- User authentication with SHA-256 password hashing
+- Per-user operation tracking
+- Activity logging and statistics
+- Session management
 
 ---
 
-## 🛠 Technology Stack
-
-### Core Libraries
-```
-Python 3.8+
-Streamlit (UI Framework)
-NumPy (Numerical Computing)
-Pillow (Image Processing)
-scikit-learn (Machine Learning)
-cryptography (Encryption)
-```
-
-### Machine Learning
-- **Algorithm:** Random Forest Classifier
-- **Trees:** 200 estimators
-- **Max Depth:** 15 levels
-- **Features:** 9 statistical features
-- **Validation:** 80/20 train/test split
-
-### Database
-- **SQLite** (Local deployment)
-- **User management & logging**
-
-### Encryption
-- **Algorithm:** AES-256-GCM
-- **Key Derivation:** PBKDF2-SHA256
-- **Authentication:** GCM mode (16-byte tag)
-
----
-
-## 📦 Installation
+## 🛠️ Installation
 
 ### Prerequisites
-- Python 3.8 or higher
-- pip package manager
-- Virtual environment (recommended)
+- **Python 3.8+** (Python 3.10+ recommended)
+- **PostgreSQL 9.1+** (for database operations)
+- **pip** (Python package manager)
 
-### Step 1: Clone Repository
+### Quick Start
+
+1. **Clone the Repository**
 ```bash
 git clone https://github.com/Faiz527/AI-integrated-Stego-tool-box-.git
 cd AI-integrated-Stego-tool-box-
 ```
 
-### Step 2: Create Virtual Environment
+2. **Create Virtual Environment**
 ```bash
-# Windows
-python -m venv venv
-venv\Scripts\activate
-
-# macOS/Linux
-python3 -m venv venv
-source venv/bin/activate
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+# or
+source .venv/bin/activate  # macOS/Linux
 ```
 
-### Step 3: Install Dependencies
+3. **Install Dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
-### Step 4: Download ML Model (Optional)
+4. **Configure Environment Variables**
+
+Create `.env` file in project root:
 ```bash
-# Pre-trained Random Forest model
-# Models are auto-generated on first run
-# To train custom model:
-python src/detect_stego/train_ml_detector.py --samples 500
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=stegnography
+DB_USER=postgres
+DB_PASSWORD=your_postgres_password
 ```
 
-### Step 5: Run Application
+5. **Create PostgreSQL Database**
 ```bash
-streamlit run main.py
+python create_db.py
 ```
 
-Visit: `http://localhost:8501`
+6. **Initialize Database Tables**
+```bash
+python -c "from src.db.db_utils import initialize_database; initialize_database()"
+```
+
+7. **Test Database Connection**
+```bash
+python test_db.py
+```
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Running the Application
 
-### Encode a Secret Message
-```python
-from src.stego.lsb_steganography import encode_image
-from PIL import Image
-
-# Load cover image
-cover_img = Image.open("photo.jpg")
-
-# Hide message
-secret_msg = "Meet me at the location"
-stego_img = encode_image(cover_img, secret_msg)
-
-# Save
-stego_img.save("hidden_message.jpg")
+Start the Streamlit app:
+```bash
+streamlit run streamlit_app.py
 ```
 
-### Detect Hidden Content
-```python
-from src.detect_stego import analyze_image_for_steganography
-import numpy as np
-from PIL import Image
+The app will open at: `http://localhost:8501`
 
-# Load image
-img = Image.open("suspicious_image.jpg").convert('RGB')
-img_array = np.array(img)
+---
 
-# Analyze (sensitivity 1-10)
-score, details = analyze_image_for_steganography(img_array, sensitivity=5)
+## 🔐 Encryption Details
 
-print(f"Detection Score: {score:.1f}%")
-print(f"Verdict: {'Hidden content likely' if score > 50 else 'No hidden content'}")
+### AES-256-CBC Encryption (Updated)
+
+The application now uses **AES-256-CBC** encryption with authenticated message authentication and secure key derivation.
+
+#### Key Specifications
+| Property | Value |
+|----------|-------|
+| **Algorithm** | AES-256 in CBC mode |
+| **Key Size** | 256 bits (32 bytes) |
+| **Block Size** | 128 bits (16 bytes) |
+| **IV Size** | 128 bits (16 bytes random) |
+| **Salt Size** | 128 bits (16 bytes random) |
+| **Key Derivation** | PBKDF2-HMAC-SHA256 (100,000 iterations) |
+| **Authentication** | HMAC-SHA256 (encrypt-then-MAC) |
+| **Padding** | PKCS7 |
+
+#### Encryption Format (Base64-encoded)
+```
+salt (16 B) || IV (16 B) || ciphertext (variable) || HMAC tag (32 B)
 ```
 
-### Encrypt a Message
+#### Security Properties
+- ✅ **Symmetric Encryption**: Same password encrypts/decrypts
+- ✅ **Authenticated**: HMAC prevents tampering and ensures integrity
+- ✅ **Non-deterministic**: Random salt + IV = different ciphertext each time
+- ✅ **Secure KDF**: 100,000 PBKDF2 iterations resist brute-force attacks
+- ✅ **Timing-Safe**: Constant-time MAC comparison prevents timing attacks
+- ✅ **Modern Standard**: NIST-approved algorithms
+
+#### Usage Example
 ```python
 from src.encryption.encryption import encrypt_message, decrypt_message
 
 # Encrypt
-plaintext = "Confidential information"
-password = "SecurePassword123"
-encrypted = encrypt_message(plaintext, password)
-
+password = "my_secure_password"
+secret_text = "This is a secret message"
+encrypted = encrypt_message(secret_text, password)
 print(f"Encrypted: {encrypted}")
 
 # Decrypt
 decrypted = decrypt_message(encrypted, password)
-print(f"Decrypted: {decrypted}")  # Output: Confidential information
+print(f"Decrypted: {decrypted}")
+assert decrypted == secret_text  # ✓ Success
+```
+
+#### Error Handling
+```python
+from src.encryption.encryption import encrypt_message, decrypt_message
+
+try:
+    # Wrong password raises ValueError
+    decrypt_message(encrypted_text, "wrong_password")
+except ValueError as e:
+    print(f"Decryption failed: {e}")
+    # "Authentication failed: wrong password or tampered data"
 ```
 
 ---
@@ -189,486 +174,541 @@ print(f"Decrypted: {decrypted}")  # Output: Confidential information
 
 ```
 AI-integrated-Stego-tool-box-/
-│
-├── main.py                          # Entry point (Streamlit app)
-├── requirements.txt                 # Python dependencies
-├── README.md                        # This file
-│
+├── .env                          # Environment variables (PostgreSQL credentials)
+├── .gitignore                    # Git ignore rules
+├── .streamlit/
+│   ├── config.toml              # Streamlit configuration
+│   └── secrets.toml             # Streamlit secrets
+├── requirements.txt             # Python dependencies
+├── README.md                    # This file
+├── pytest.ini                   # Pytest configuration
+├── streamlit_app.py             # Main Streamlit application entry point
+├── create_db.py                 # Database creation script
+├── test_db.py                   # Database connection test
+├── test_steganography.py        # Steganography methods test
+├── data/
+│   ├── input/                   # Input images and zips
+│   ├── output/                  # Encoded output, reports
+│   └── temp/                    # Temporary processing files
 ├── src/
-│   ├── __init__.py
+│   ├── __init__.py              # Main package initialization
 │   │
-│   ├── stego/                       # Steganography Encoding
-│   │   ├── lsb_steganography.py    # LSB encoding/decoding
-│   │   ├── dct_steganography.py    # DCT encoding/decoding
-│   │   ├── dwt_steganography.py    # DWT encoding/decoding
-│   │   └── __init__.py
+│   ├── stego/                   # Core Steganography Engine
+│   │   ├── __init__.py
+│   │   ├── lsb_steganography.py         # LSB (Spatial Domain) method
+│   │   ├── dct_steganography.py         # Hybrid DCT (Y-Channel) method
+│   │   └── dwt_steganography.py         # Hybrid DWT (Haar Wavelet) method
 │   │
-│   ├── detect_stego/                # Detection & ML Model
-│   │   ├── ml_detector.py          # Random Forest classifier
-│   │   ├── train_ml_detector.py    # Model training script
-│   │   ├── ui_section.py           # Streamlit UI for detection
-│   │   ├── models/                 # Trained models (PKL files)
-│   │   │   ├── stego_detector_rf.pkl
-│   │   │   └── stego_detector_scaler.pkl
-│   │   └── __init__.py
+│   ├── db/                      # Database Layer
+│   │   ├── __init__.py
+│   │   ├── db_utils.py          # User management, operation logging, statistics
+│   │   └── db_utils_minimal.py  # Minimal DB utilities
 │   │
-│   ├── encryption/                  # AES-256 Encryption
-│   │   ├── encryption.py           # AES-256-GCM implementation
-│   │   └── __init__.py
+│   ├── analytics/               # Analytics & Statistics
+│   │   ├── __init__.py
+│   │   └── stats.py             # Chart generation, statistics calculations
 │   │
-│   ├── db/                          # Database Management
-│   │   ├── db_utils.py             # Database operations
-│   │   ├── models.py               # SQLAlchemy models
-│   │   └── __init__.py
+│   ├── encryption/              # Encryption Module (AES-256-CBC)
+│   │   ├── __init__.py
+│   │   └── encryption.py        # AES-256-CBC with PBKDF2-HMAC-SHA256 key derivation
 │   │
-│   ├── auth/                        # Authentication
-│   │   ├── auth_utils.py           # Password hashing/verification
-│   │   └── __init__.py
+│   ├── ui/                      # User Interface
+│   │   ├── __init__.py
+│   │   ├── config_dict.py       # Centralized UI configuration & constants
+│   │   ├── reusable_components.py # Reusable Streamlit components
+│   │   ├── styles.py            # Dark theme styling & CSS
+│   │   └── ui_components.py     # Main UI sections (encode, decode, etc.)
 │   │
-│   └── ui/                          # UI Components
-│       ├── ui_components.py         # Main UI sections
-│       ├── reusable_components.py  # Reusable Streamlit components
-│       ├── config_dict.py          # UI configuration & labels
-│       └── __init__.py
+│   └── batch_processing/        # Batch Processing Module
+│       ├── __init__.py
+│       ├── batch_encoder.py     # Batch encoding functions
+│       ├── controller.py        # Batch processing orchestration
+│       ├── report_generator.py  # JSON/CSV report generation
+│       └── zip_handler.py       # ZIP extraction and validation
 │
-└── docs/                            # Documentation
-    ├── API.md
-    ├── ARCHITECTURE.md
-    └── SECURITY.md
+├── tests/                       # Test suite
+│   ├── __init__.py
+│   ├── test_encryption.py       # AES-256-CBC encryption tests
+│   ├── test_steganography.py    # Steganography method tests
+│   └── test_batch_processing.py # Batch processing tests
+│
+├── logs/                        # Application logs
+└── htmlcov/                     # Coverage reports
+```
+
+### Module Organization
+
+**`src/stego/`** - Steganography Engine
+- Independent implementations of LSB, DCT, and DWT methods
+- Each method has encode/decode functions
+- No external dependencies between methods
+
+**`src/db/`** - Database Layer
+- PostgreSQL connection management
+- User authentication with SHA-256 password hashing
+- Operation logging (encode/decode history)
+- Statistics retrieval for analytics
+
+**`src/analytics/`** - Analytics & Visualization
+- Chart generation (Plotly)
+- Statistics calculations
+- Activity logs and dataframes
+- Real-time metrics
+
+**`src/encryption/`** - Message Security (AES-256-CBC)
+- **AES-256 symmetric encryption** in CBC mode
+- **PBKDF2-HMAC-SHA256 key derivation** (100,000 iterations)
+- **HMAC-SHA256 authentication** for tamper detection
+- **Random salt & IV** per encryption
+- Optional message protection
+
+**`src/ui/`** - Web Interface
+- Streamlit UI components
+- Dark theme styling
+- Authentication section
+- Encode/Decode sections
+- Comparison and Statistics sections
+- Centralized configuration via `config_dict.py`
+- Reusable components via `reusable_components.py`
+
+**`src/batch_processing/`** - Batch Processing Module
+- ZIP extraction and image validation
+- Multi-method batch encoding
+- JSON and CSV report generation
+- Download ZIP creation
+- File validation and error handling
+- Integration with core steganography engine
+
+---
+
+## 🔐 Usage Guide
+
+### 1. **Create Account**
+- Click "Create New Account" on the login screen
+- Enter username and password (minimum 6 characters)
+- Account is created in PostgreSQL database
+
+### 2. **Encode Message**
+- Go to **Encode** tab
+- Select steganography method (LSB, DCT, or DWT)
+- Upload cover image (PNG/JPG)
+- Enter secret message
+- (Optional) Enable AES-256 encryption with password
+- Click "Encode Message"
+- Download the encoded image
+
+### 3. **Decode Message**
+- Go to **Decode** tab
+- Upload encoded image
+- Auto-detection tries all methods (LSB → DCT → DWT)
+- (If encrypted) Enter decryption password
+- Click "Decode Message"
+- View extracted message
+
+### 4. **Compare Methods**
+- Go to **Compare Methods** tab
+- Upload cover image
+- Enter test message
+- View side-by-side comparison of all three methods
+- See PSNR (Peak Signal-to-Noise Ratio) for each method
+
+### 5. **View Analytics**
+- Go to **Statistics** tab
+- View operation timeline (last 7 days)
+- See method distribution pie chart
+- Check encode vs decode statistics
+- Monitor encryption usage
+- View data size distribution
+- See recent activity log
+
+### 6. **Batch Processing**
+- Go to **Batch Processing** tab
+- Choose upload method: ZIP file or multiple images
+- Select steganography method and enter secret message
+- (Optional) Enable AES-256 encryption
+- Click "Start Batch Encoding" or "Start Batch Decoding"
+- Download processed images and reports
+
+---
+
+## 🔧 Technical Details
+
+### Steganography Methods
+
+#### LSB (Least Significant Bit)
+- **Domain**: Spatial
+- **Capacity**: ~180 KB / ~2.5% of image size
+- **Detection Resistance**: Low
+- **Computational Cost**: Very Low
+- **Quality**: Excellent (PSNR > 50 dB)
+- **JPEG Safe**: No
+
+#### Hybrid DCT
+- **Domain**: Frequency (Y-channel only)
+- **Capacity**: ~60 KB / ~1.5% of image size
+- **Detection Resistance**: Medium
+- **Computational Cost**: Medium
+- **Quality**: Good (PSNR > 40 dB)
+- **JPEG Safe**: Yes
+
+#### Hybrid DWT (Haar Wavelet)
+- **Domain**: Frequency (Wavelet)
+- **Capacity**: ~15 KB / ~2% of image size
+- **Detection Resistance**: High
+- **Computational Cost**: Medium-High
+- **Quality**: Very Good (PSNR > 45 dB)
+- **JPEG Safe**: No
+
+### Encryption Security (AES-256-CBC)
+
+**Algorithm**: AES-256 in CBC mode with HMAC-SHA256 authentication
+
+**Key Derivation**:
+- **Function**: PBKDF2-HMAC-SHA256
+- **Iterations**: 100,000 (NIST recommendation)
+- **Key Size**: 256 bits (32 bytes)
+- **Salt**: 16 bytes (random per encryption)
+- **Output**: 64 bytes (32 for AES key + 32 for HMAC key)
+
+**Encryption**:
+- **Mode**: CBC (Cipher Block Chaining)
+- **IV**: 16 bytes (random per encryption)
+- **Padding**: PKCS7
+- **Authentication**: HMAC-SHA256 (encrypt-then-MAC pattern)
+- **Format**: base64(salt || IV || ciphertext || HMAC tag)
+
+**Security Properties**:
+- ✅ **Non-Deterministic**: Different ciphertext for same plaintext (random IV + salt)
+- ✅ **Authenticated**: HMAC prevents unauthorized modifications
+- ✅ **Brute-Force Resistant**: 100,000 PBKDF2 iterations slow down attacks
+- ✅ **Timing-Secure**: Constant-time MAC comparison (no information leakage)
+- ✅ **Future-Proof**: 256-bit key resists quantum computing threats (in theory)
+
+### Database Schema
+
+**users**
+```sql
+id SERIAL PRIMARY KEY
+username VARCHAR(255) UNIQUE NOT NULL
+password_hash VARCHAR(255) NOT NULL
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+```
+
+**operations**
+```sql
+id SERIAL PRIMARY KEY
+user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+method VARCHAR(50)
+input_image VARCHAR(255)
+output_image VARCHAR(255)
+message_size INTEGER
+encoding_time FLOAT
+status VARCHAR(50)
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+```
+
+**activity_log**
+```sql
+id SERIAL PRIMARY KEY
+user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+action VARCHAR(255)
+details TEXT
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ```
 
 ---
 
-## 📚 Module Documentation
+## 📊 Analytics & Statistics
 
-### 1. Steganography Module (`src/stego/`)
-
-#### LSB Steganography
-```python
-from src.stego.lsb_steganography import encode_image, decode_image
-
-# Encode
-stego_img = encode_image(cover_image, "secret message")
-
-# Decode
-message = decode_image(stego_image)
-```
-
-**Characteristics:**
-- Simplest method
-- ~0.391 bits per pixel capacity
-- Vulnerable to statistical analysis
-- Fast encoding/decoding
-
-#### DCT Steganography
-```python
-from src.stego.dct_steganography import encode_dct, decode_dct
-
-# Encode
-stego_img = encode_dct(cover_image, "secret message")
-
-# Decode
-message = decode_dct(stego_image)
-```
-
-**Characteristics:**
-- Frequency domain hiding
-- Better imperceptibility
-- ~0.1-0.3 bits per pixel
-- Robust to some attacks
-
-#### DWT Steganography
-```python
-from src.stego.dwt_steganography import encode_dwt, decode_dwt
-
-# Encode
-stego_img = encode_dwt(cover_image, "secret message")
-
-# Decode
-message = decode_dwt(stego_image)
-```
-
-**Characteristics:**
-- Wavelet transform based
-- Best imperceptibility
-- ~0.1-0.2 bits per pixel
-- Advanced analysis required
+The application tracks:
+- **Total Operations**: Count of all encode/decode operations
+- **Method Usage**: Distribution of LSB, DCT, DWT usage
+- **Encryption Rate**: Percentage of operations using AES-256 encryption
+- **Operation Timeline**: Operations per day over 7 days
+- **Data Size Distribution**: Breakdown of message sizes
+- **User Activity**: Recent operations by all users
 
 ---
 
-### 2. Detection Module (`src/detect_stego/`)
+## 🧪 Testing
 
-#### ML Detector (Random Forest)
-```python
-from src.detect_stego import analyze_image_for_steganography, get_detector
-
-# Simple analysis
-score, data = analyze_image_for_steganography(img_array, sensitivity=5)
-
-# Advanced usage
-detector = get_detector()
-prediction, confidence = detector.predict(img_array, return_confidence=True)
-```
-
-**Features Extracted (9 total):**
-1. LSB Entropy
-2. LSB 0/1 Ratio
-3. LSB Autocorrelation
-4. ASCII Character Ratio
-5. Chi-Square Statistic
-6. DCT Mean
-7. DCT Variance
-8. High-Frequency Energy
-9. Histogram Variance
-
-**Model Performance:**
-- Training Accuracy: ~92%
-- Validation Accuracy: ~88%
-- Precision: ~87%
-- Recall: ~89%
-- F1 Score: ~0.88
-
-#### Train Custom Model
+### Run All Tests
 ```bash
-# Generate synthetic data and train
-python src/detect_stego/train_ml_detector.py --samples 500
-
-# Advanced options
-python src/detect_stego/train_ml_detector.py \
-  --samples 1000 \
-  --output models/custom_detector.pkl
+pytest tests/ -v
 ```
 
-**Training Parameters:**
-- Estimators: 200 decision trees
-- Max Depth: 15
-- Min Samples Split: 5
-- Min Samples Leaf: 2
-- Class Weight: Balanced
-- Cross-validation: 80/20 split
+### Run Encryption Tests Only
+```bash
+pytest tests/test_encryption.py -v
+```
+
+### Run Steganography Tests
+```bash
+pytest tests/test_steganography.py -v
+```
+
+### Run Specific Test
+```bash
+pytest tests/test_encryption.py::TestAES256Encryption::test_encrypt_decrypt_basic -v
+```
+
+### Test with Coverage Report
+```bash
+pytest tests/ --cov=src --cov-report=html
+```
+
+### Test Database Connection
+```bash
+python test_db.py
+```
+
+### Test Steganography Methods
+```bash
+python test_steganography.py
+```
 
 ---
 
-### 3. Encryption Module (`src/encryption/`)
+## ⚙️ Configuration
 
-#### AES-256-GCM Encryption
+### Streamlit Configuration (`.streamlit/config.toml`)
+```toml
+[theme]
+primaryColor = "#238636"
+backgroundColor = "#0E1117"
+secondaryBackgroundColor = "#161B22"
+textColor = "#C9D1D9"
+font = "sans serif"
+
+[client]
+showErrorDetails = true
+showWarningOnDirectExecution = true
+
+[logger]
+level = "info"
+
+[server]
+port = 8501
+headless = true
+```
+
+### Environment Variables (`.env`)
+```bash
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=stegnography
+DB_USER=postgres
+DB_PASSWORD=your_password
+```
+
+### Pytest Configuration (`pytest.ini`)
+```ini
+[pytest]
+testpaths = tests
+python_files = test_*.py
+python_classes = Test*
+python_functions = test_*
+addopts = -v --tb=short
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Database Connection Failed
+- Ensure PostgreSQL is running: `Get-Service postgresql-x64-*`
+- Verify database exists: `psql -U postgres -h localhost -l`
+- Check `.env` credentials are correct
+
+### Import Errors
+- Ensure virtual environment is activated
+- Run `pip install -r requirements.txt`
+- Verify all files are in correct locations
+
+### Image Upload Issues
+- Ensure image is PNG or JPG format
+- Image size should be at least 100x100 pixels
+- File size should be less than 100 MB
+
+### Encoding/Decoding Errors
+- Verify correct method is selected for decoding
+- Ensure image format matches (no format conversion)
+- Check that image hasn't been compressed or modified
+
+### Encryption/Decryption Fails
+- Verify correct password is used for decryption
+- Check that encrypted data hasn't been corrupted or tampered with
+- Ensure message was encrypted with the same AES-256-CBC implementation
+
+### Tests Not Running
+- Ensure pytest is installed: `pip install pytest`
+- Run from project root directory
+- Check `pytest.ini` configuration
+- Verify `src/` directory is in Python path
+
+---
+
+## 📈 Performance Metrics
+
+Typical performance on modern hardware:
+
+| Operation | Time | Memory |
+|-----------|------|--------|
+| LSB Encode (1MB) | 0.5s | 50MB |
+| DCT Encode (1MB) | 1.2s | 80MB |
+| DWT Encode (1MB) | 1.5s | 100MB |
+| AES-256 Encrypt | 10ms | <5MB |
+| Decode Any Method | 0.3s | 40MB |
+| AES-256 Decrypt | 10ms | <5MB |
+
+---
+
+## 🔒 Security Considerations
+
+### Encryption Security
+- ✅ **AES-256-CBC**: Industry-standard symmetric encryption (NIST-approved)
+- ✅ **PBKDF2-HMAC-SHA256**: Secure password-based key derivation
+- ✅ **HMAC Authentication**: Prevents tampering and ensures integrity
+- ✅ **Random Salt/IV**: 16-byte random nonces for each encryption
+- ✅ **Constant-Time Comparison**: Prevents timing attacks on MAC verification
+- ✅ **PKCS7 Padding**: Standard padding removes information leakage
+
+### Application Security
+- ✅ Passwords hashed with SHA-256
+- ✅ HTTPS recommended for production deployment
+- ✅ Database access controlled via credentials
+- ✅ No sensitive data in logs
+- ✅ Session-based authentication
+- ✅ User isolation in database
+
+### Steganography Security
+- ✅ Three independent methods (LSB, DCT, DWT)
+- ✅ Optional message encryption before embedding
+- ✅ Method auto-detection on decode
+- ✅ Image integrity checks
+
+### Recommendations for Production
+1. Use HTTPS/TLS for all network communication
+2. Store database credentials in secure secret manager
+3. Enable PostgreSQL SSL connections
+4. Implement rate limiting on authentication
+5. Add audit logging for sensitive operations
+6. Regular security updates for dependencies
+7. Use strong passwords (20+ characters recommended)
+8. Keep encryption passwords separate from files
+
+---
+
+## 👨‍💻 Developer Information
+
+**Application**: AI-Integrated Stego Tool Box
+**Version**: 1.0.0
+**Author**: [Faiz527](https://github.com/Faiz527)
+**Built with**:
+- Streamlit (Frontend)
+- PostgreSQL (Database)
+- Python 3.10+
+
+**Key Libraries**:
+- `Pillow` (10.0.0+) - Image processing
+- `NumPy/SciPy` (1.24.0+ / 1.11.0+) - Scientific computing
+- `PyWavelets` (1.4.0+) - Wavelet transforms
+- `Plotly` (5.18.0+) - Interactive visualizations
+- `psycopg2` (2.9.0+) - PostgreSQL adapter
+- `cryptography` (41.0.0+) - Cryptographic primitives (AES-256-CBC, PBKDF2)
+- `python-dotenv` (1.0.0+) - Environment variable management
+
+---
+
+## 🚀 Future Enhancements
+
+- [ ] AI-based steganalysis detection
+- [ ] Quality Metrics Module - PSNR, MSE, SSIM calculations
+- [ ] Auto-detection Module - Automatically select best method per image
+- [ ] Additional image formats (BMP, TIFF, WebP)
+- [ ] Video steganography support
+- [ ] Report generation (PDF)
+- [ ] Cloud storage integration (AWS S3, Google Drive)
+- [ ] Docker containerization
+- [ ] Distributed computing for large-scale batch processing
+- [ ] Two-factor authentication (2FA)
+- [ ] API endpoint for programmatic access
+
+---
+
+## 📚 Module Development Guide
+
+### Adding New Steganography Method
+
+1. Create new file in `src/stego/` (e.g., `new_method_steganography.py`)
+2. Implement `encode_method(img, secret_text)` and `decode_method(img)`
+3. Export functions in `src/stego/__init__.py`
+4. Add method to `METHODS` list in `src/ui/config_dict.py`
+5. Add UI handling in `src/ui/ui_components.py`
+6. Update imports in `streamlit_app.py`
+7. Add tests in `tests/test_steganography.py`
+
+### Adding New Chart/Statistic
+
+1. Create function in `src/analytics/stats.py`
+2. Export in `src/analytics/__init__.py`
+3. Import in `src/ui/ui_components.py`
+4. Add UI element in `show_statistics_section()`
+
+### Database Operations
+
+1. Add function in `src/db/db_utils.py`
+2. Export in `src/db/__init__.py`
+3. Call from appropriate UI component
+
+### Working with Encryption
+
 ```python
 from src.encryption.encryption import encrypt_message, decrypt_message
 
-# Encrypt
-encrypted = encrypt_message("Secret message", "password123")
+# Encrypt before embedding
+encrypted_msg = encrypt_message("secret", "password")
+# Now embed encrypted_msg in image
 
-# Decrypt
-plaintext = decrypt_message(encrypted, "password123")
-```
-
-**Security Features:**
-- **Algorithm:** AES-256 in GCM mode
-- **Key Size:** 256 bits
-- **Authentication:** 16-byte authentication tag
-- **Key Derivation:** PBKDF2-SHA256
-- **Iterations:** 480,000 (NIST 2023 standard)
-- **Salt:** 16 random bytes per message
-- **Nonce/IV:** 12 random bytes per message
-
-**Format (Base64 encoded):**
-```
-[Salt (16 bytes)][Nonce (12 bytes)][Ciphertext + Auth Tag (variable)]
-```
-
-#### Legacy XOR Support
-```python
-from src.encryption.encryption import decrypt_message_legacy_xor
-
-# Decrypt old XOR-encrypted messages (backward compatibility only)
-plaintext = decrypt_message_legacy_xor(old_encrypted, password)
+# Decrypt after extraction
+decrypted_msg = decrypt_message(encrypted_blob, "password")
 ```
 
 ---
 
-### 4. Database Module (`src/db/`)
+## 📞 Support
 
-**Features:**
-- User authentication
-- Activity logging
-- Encryption key management
-- Audit trail
-
-```python
-from src.db.db_utils import log_activity
-
-# Log user activity
-log_activity(
-    user_id=1,
-    action="encode_lsb",
-    details="Encoded image with 50 bytes message",
-    status="success"
-)
-```
-
----
-
-### 5. Authentication Module (`src/auth/`)
-
-**Password Hashing:**
-```python
-from src.auth.auth_utils import hash_password, verify_password
-
-# Hash password for storage
-pwd_hash = hash_password("MyPassword123")
-
-# Verify password during login
-is_correct = verify_password("MyPassword123", pwd_hash)
-```
-
----
-
-## 💻 Usage Examples
-
-### Example 1: Hide and Detect Message
-```python
-import numpy as np
-from PIL import Image
-from src.stego.lsb_steganography import encode_image, decode_image
-from src.detect_stego import analyze_image_for_steganography
-
-# Load image
-cover = Image.open("nature.jpg")
-
-# Hide message using LSB
-secret = "This is a secret message"
-stego = encode_image(cover, secret)
-
-# Convert to array for detection
-stego_array = np.array(stego)
-
-# Detect hidden content
-score, analysis = analyze_image_for_steganography(stego_array, sensitivity=7)
-
-print(f"Detection Score: {score:.1f}%")
-print(f"Hidden content detected: {score > 50}")
-
-# Decode message
-decoded = decode_image(stego)
-print(f"Decoded: {decoded}")
-```
-
-### Example 2: Compare Encoding Methods
-```python
-from src.stego.lsb_steganography import encode_image as lsb_encode
-from src.stego.dct_steganography import encode_dct as dct_encode
-from src.stego.dwt_steganography import encode_dwt as dwt_encode
-from src.detect_stego import analyze_image_for_steganography
-import numpy as np
-
-cover = Image.open("photo.jpg")
-msg = "Secret content here"
-
-# Encode using different methods
-lsb_stego = lsb_encode(cover, msg)
-dct_stego = dct_encode(cover, msg)
-dwt_stego = dwt_encode(cover, msg)
-
-# Analyze detectability
-methods = [
-    ("LSB", np.array(lsb_stego)),
-    ("DCT", np.array(dct_stego)),
-    ("DWT", np.array(dwt_stego))
-]
-
-for name, img_array in methods:
-    score, _ = analyze_image_for_steganography(img_array, sensitivity=5)
-    print(f"{name:5} - Detection Score: {score:6.1f}%")
-```
-
-### Example 3: Secure Message Storage
-```python
-from src.encryption.encryption import encrypt_message, decrypt_message
-from src.db.db_utils import store_encrypted_message
-
-# User writes a message
-message = "Confidential data to be stored"
-password = "StrongPassword2024!"
-
-# Encrypt
-encrypted = encrypt_message(message, password)
-
-# Store in database (encrypted)
-store_encrypted_message(user_id=1, encrypted_data=encrypted)
-
-# Later: Retrieve and decrypt
-retrieved = get_encrypted_message(user_id=1)
-decrypted = decrypt_message(retrieved, password)
-print(decrypted)  # Output: Confidential data to be stored
-```
-
----
-
-## 🔒 Security Features
-
-### Encryption
-- ✅ AES-256-GCM (NIST approved)
-- ✅ PBKDF2 key derivation (480k iterations)
-- ✅ Random salt per message (16 bytes)
-- ✅ Random nonce per message (12 bytes)
-- ✅ Authenticated encryption (GCM mode)
-- ✅ No known attacks (2024)
-
-### Authentication
-- ✅ Bcrypt password hashing
-- ✅ Salted hashes (cost factor 12)
-- ✅ Secure session management
-- ✅ Activity logging & audit trail
-
-### Detection
-- ✅ Machine learning analysis
-- ✅ Multiple feature extraction
-- ✅ Real-time analysis
-- ✅ Sensitivity adjustment
-
-### Best Practices
-```python
-# ✅ DO:
-- Use strong passwords (12+ characters)
-- Enable two-factor authentication
-- Regularly train/test ML model
-- Monitor activity logs
-- Keep dependencies updated
-
-# ❌ DON'T:
-- Reuse passwords across platforms
-- Share encryption keys
-- Trust 100% detection accuracy
-- Use old XOR encryption
-- Disable authentication
-```
-
----
-
-## 📊 Model Performance
-
-### Random Forest Specifications
-```
-Estimators:        200 trees
-Max Depth:         15 levels
-Min Samples Split: 5
-Min Samples Leaf:  2
-Training Data:     Cover + Stego images
-Validation Split:  80/20
-
-Performance Metrics:
-├── Training Accuracy:    92.34%
-├── Validation Accuracy:  88.12%
-├── Precision:            87.45%
-├── Recall:               89.32%
-├── F1 Score:             0.8838
-└── AUC-ROC:              0.9412
-```
-
-### Feature Importance (Random Forest)
-```
-1. LSB Entropy              → 18.2%
-2. Chi-Square Statistic     → 16.8%
-3. Histogram Variance       → 15.4%
-4. ASCII Character Ratio    → 13.9%
-5. DCT Variance             → 12.1%
-6. High-Frequency Energy    → 11.5%
-7. DCT Mean                 → 7.3%
-8. LSB 0/1 Ratio            → 3.2%
-9. LSB Autocorrelation      → 1.4%
-```
-
----
-
-## 🔄 Recent Updates (v2.0.0)
-
-### Major Changes
-- ✅ **Upgraded ML Model:** Logistic Regression → Random Forest (200 trees)
-- ✅ **Improved Accuracy:** +20% on validation tests
-- ✅ **Better Encryption:** XOR → AES-256-GCM (NIST approved)
-- ✅ **Enhanced UI:** Native Streamlit components
-- ✅ **Feature Analysis:** Random Forest importance metrics
-- ✅ **Training Improvements:** Synthetic data generation + metrics tracking
-- ✅ **Backward Compatibility:** Legacy XOR decryption support
-
-### Performance Improvements
-| Metric | Before | After | Change |
-|--------|--------|-------|--------|
-| Detection Accuracy | ~68% | ~88% | +20% |
-| Encryption Standard | XOR (weak) | AES-256 (strong) | ✅ Better |
-| Training Time | N/A | 5-15 min | ✅ Optimized |
-| Feature Count | 5 | 9 | +4 features |
-| Model Size | ~2MB | ~3MB | +1MB |
-
-### Files Modified
-- `src/detect_stego/ml_detector.py` - Complete redesign
-- `src/detect_stego/train_ml_detector.py` - Random Forest training
-- `src/detect_stego/ui_section.py` - Enhanced Streamlit UI
-- `src/encryption/encryption.py` - AES-256-GCM implementation
-- `requirements.txt` - Added cryptography library
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these guidelines:
-
-1. **Fork the repository**
-2. **Create a feature branch:** `git checkout -b feature/YourFeature`
-3. **Commit changes:** `git commit -m "Add YourFeature"`
-4. **Push to branch:** `git push origin feature/YourFeature`
-5. **Open a Pull Request**
-
-### Development Setup
-```bash
-# Clone your fork
-git clone https://github.com/YOUR_USERNAME/AI-integrated-Stego-tool-box-.git
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
-
-# Install dev dependencies
-pip install -r requirements.txt
-pip install pytest pytest-cov black flake8
-
-# Run tests
-pytest tests/
-
-# Format code
-black src/
-
-# Lint
-flake8 src/
-```
+For issues or questions:
+1. Check the troubleshooting section
+2. Review error messages carefully
+3. Verify all dependencies are installed
+4. Test database connection with `test_db.py`
+5. Run test suite with `pytest tests/ -v`
+6. Check logs in `logs/` directory
+7. Open an issue on [GitHub](https://github.com/Faiz527/AI-integrated-Stego-tool-box-/issues)
 
 ---
 
 ## 📝 License
 
-This project is licensed under the MIT License - see LICENSE file for details.
+This project is provided as-is for educational purposes.
 
 ---
 
-## 📧 Contact & Support
+## 📋 Changelog
 
-**Issues & Bug Reports:** [GitHub Issues](https://github.com/Faiz527/AI-integrated-Stego-tool-box-/issues)
-
-**Email:** faiz527@example.com
-
-**Documentation:** Check `/docs` folder for detailed guides
-
----
-
-## 🙏 Acknowledgments
-
-- Scikit-learn for ML algorithms
-- Streamlit for UI framework
-- Cryptography library for AES-256
-- Open-source community
+### v1.0.0 (Current)
+- ✨ **NEW**: Upgraded encryption from Fernet (AES-128) to **AES-256-CBC**
+- ✨ **NEW**: PBKDF2-HMAC-SHA256 key derivation (100,000 iterations)
+- ✨ **NEW**: HMAC-SHA256 authentication (encrypt-then-MAC pattern)
+- ✨ **NEW**: Comprehensive encryption test suite
+- 🔧 Updated `requirements.txt` with cryptography library
+- 📚 Enhanced README with encryption security details
+- 🧪 Added `pytest.ini` for test configuration
+- 🎨 Professional SaaS-style UI/UX improvements
 
 ---
 
-**Last Updated:** March 2026
-**Current Version:** 2.0.0
-**Status:** Active Development ✅
+**Last Updated**: 3-FEB-2026
+**Project Structure**: Modular Architecture v1.0
+**Security**: Military-grade AES-256-CBC encryption + HMAC authentication
