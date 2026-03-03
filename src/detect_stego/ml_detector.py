@@ -1,7 +1,7 @@
 """
 Machine Learning-based Steganography Detector
 ==============================================
-Uses Logistic Regression to detect hidden messages in images.
+Uses Random Forest to detect hidden messages in images.
 Single source of truth for ML detection.
 """
 
@@ -9,7 +9,7 @@ import numpy as np
 import logging
 import pickle
 from pathlib import Path
-from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 from scipy.fftpack import dct
 from PIL import Image
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 # Model paths
 MODEL_DIR = Path(__file__).parent / "models"
 MODEL_DIR.mkdir(exist_ok=True)
-MODEL_PATH = MODEL_DIR / "stego_detector_lr.pkl"
+MODEL_PATH = MODEL_DIR / "stego_detector_rf.pkl"
 SCALER_PATH = MODEL_DIR / "stego_detector_scaler.pkl"
 
 # Global detector instance
@@ -112,7 +112,7 @@ def analyze_image_for_steganography(img_array, sensitivity):
 
 
 class StegoDetectorML:
-    """Machine Learning-based steganography detector using Logistic Regression."""
+    """Machine Learning-based steganography detector using Random Forest."""
     
     def __init__(self):
         """Initialize the detector."""
@@ -237,7 +237,7 @@ class StegoDetectorML:
     
     def train(self, cover_images, stego_images, validation_split=0.2):
         """
-        Train the Logistic Regression model.
+        Train the Random Forest model.
         
         Args:
             cover_images: List of cover image arrays
@@ -290,14 +290,17 @@ class StegoDetectorML:
             X_train_scaled = self.scaler.transform(X_train)
             X_val_scaled = self.scaler.transform(X_val)
             
-            # Train Logistic Regression
-            logger.info("Training Logistic Regression model...")
-            self.model = LogisticRegression(
-                max_iter=1000,
+            # Train Random Forest
+            logger.info("Training Random Forest model...")
+            self.model = RandomForestClassifier(
+                n_estimators=200,
+                max_depth=15,
+                min_samples_split=5,
+                min_samples_leaf=2,
                 random_state=42,
-                solver='lbfgs',
+                n_jobs=-1,
                 class_weight='balanced',
-                C=1.0
+                max_features='sqrt'
             )
             self.model.fit(X_train_scaled, y_train)
             self.is_trained = True
@@ -359,7 +362,7 @@ class StegoDetectorML:
             return None
     
     def save_model(self, path=None):
-        """Save the trained model and scaler to disk."""
+        """Save the trained model and scaler to disk as PKL."""
         try:
             path = path or MODEL_PATH
             
@@ -377,7 +380,7 @@ class StegoDetectorML:
             with open(scaler_path, 'wb') as f:
                 pickle.dump(self.scaler, f)
             
-            logger.info(f"Model saved to {path}")
+            logger.info(f"Random Forest model saved to {path}")
             logger.info(f"Scaler saved to {scaler_path}")
             return True
             
@@ -386,7 +389,7 @@ class StegoDetectorML:
             return False
     
     def load_model(self, path=None):
-        """Load trained model and scaler from disk."""
+        """Load trained model and scaler from disk (PKL)."""
         try:
             path = path or MODEL_PATH
             
@@ -403,7 +406,7 @@ class StegoDetectorML:
                     self.scaler = pickle.load(f)
             
             self.is_trained = True
-            logger.info(f"Model loaded from {path}")
+            logger.info(f"Random Forest model loaded from {path}")
             return True
             
         except Exception as e:
@@ -411,7 +414,7 @@ class StegoDetectorML:
             return False
     
     def get_feature_importance(self):
-        """Get feature importance from the model."""
+        """Get feature importance from Random Forest model."""
         if self.model is None:
             return {}
         
@@ -427,7 +430,8 @@ class StegoDetectorML:
             "Histogram Variance"
         ]
         
-        importance = np.abs(self.model.coef_[0])
+        # Get feature importance from Random Forest
+        importance = self.model.feature_importances_
         importance = importance / importance.sum()
         
         return dict(zip(feature_names, importance))

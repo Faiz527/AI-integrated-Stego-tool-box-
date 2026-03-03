@@ -1,7 +1,7 @@
 """
-Training Script for ML-based Steganography Detector
-====================================================
-Generates synthetic training data and trains Logistic Regression model.
+Training Script for Random Forest Steganography Detector
+========================================================
+Generates synthetic training data and trains Random Forest model.
 
 USAGE:
     python train_detector.py --samples 100
@@ -201,9 +201,9 @@ def generate_training_data(n_samples=100, image_sizes=[(256, 256)]) -> Tuple[lis
 
 
 def train_detector(n_samples=100, save_path=None):
-    """Train the ML detector with synthetic data."""
+    """Train the Random Forest ML detector with synthetic data."""
     logger.info("=" * 70)
-    logger.info("TRAINING LOGISTIC REGRESSION STEGANOGRAPHY DETECTOR")
+    logger.info("TRAINING RANDOM FOREST STEGANOGRAPHY DETECTOR")
     logger.info("=" * 70)
     
     cover_images, stego_images = generate_training_data(n_samples)
@@ -232,7 +232,7 @@ def train_detector(n_samples=100, save_path=None):
         logger.info("=" * 70)
         
         importance = detector.get_feature_importance()
-        logger.info("\n📊 Top Features:")
+        logger.info("\n📊 Top Features (Random Forest):")
         for i, (name, imp) in enumerate(sorted(importance.items(), key=lambda x: x[1], reverse=True)):
             logger.info(f"  {i+1}. {name:.<40} {imp:.4f}")
     else:
@@ -245,7 +245,7 @@ if __name__ == "__main__":
     import argparse
     
     parser = argparse.ArgumentParser(
-        description="Train Logistic Regression steganography detector",
+        description="Train Random Forest steganography detector",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -265,7 +265,7 @@ Examples:
         "--output", "-o",
         type=str,
         default=None,
-        help="Output path for model (default: src/detect_stego/models/stego_detector_lr.pkl)"
+        help="Output path for model (default: src/detect_stego/models/stego_detector_rf.pkl)"
     )
     
     args = parser.parse_args()
