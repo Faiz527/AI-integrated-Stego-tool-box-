@@ -1,280 +1,352 @@
 """
-Training Script for Random Forest Steganography Detector
-========================================================
+Train ML Steganography Detector
+================================
 Generates synthetic training data and trains Random Forest model.
-
-USAGE:
-    python train_detector.py --samples 100
-    python train_detector.py -n 200 -o ./models/my_detector.pkl
+Creates both cover and stego images for classification.
 """
 
-import logging
-import random
-import string
 import numpy as np
+import logging
 from pathlib import Path
-from typing import Tuple
 from PIL import Image
+import sys
 
+# Add project root to path
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.detect_stego.ml_detector import StegoDetectorML, MODEL_PATH
+from src.stego.lsb_steganography import encode_image as lsb_encode
+from src.stego.dct_steganography import encode_dct
+from src.stego.dwt_steganography import encode_dwt
+
+logger = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger(__name__)
-
-try:
-    from src.stego.lsb_steganography import encode_image as lsb_encode
-    from src.stego.dct_steganography import encode_dct
-    from src.stego.dwt_steganography import encode_dwt
-    from src.detect_stego.ml_detector import StegoDetectorML, MODEL_PATH
-except ImportError:
-    import sys
-    sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-    from src.stego.lsb_steganography import encode_image as lsb_encode
-    from src.stego.dct_steganography import encode_dct
-    from src.stego.dwt_steganography import encode_dwt
-    from src.detect_stego.ml_detector import StegoDetectorML, MODEL_PATH
 
 
-def generate_random_image(width=256, height=256):
-    """Generate a random natural-looking image."""
-    x = np.linspace(0, 255, width)
-    y = np.linspace(0, 255, height)
-    xx, yy = np.meshgrid(x, y)
+# ============================================================================
+#  Synthetic Data Generation
+# ============================================================================
+
+def generate_random_image(size=(256, 256), seed=None):
+    """
+    Generate a random cover image with natural patterns.
     
-    noise = np.random.normal(0, 30, (height, width, 3))
-    r = (xx + noise[:, :, 0]) % 256
-    g = (yy + noise[:, :, 1]) % 256
-    b = ((xx + yy) / 2 + noise[:, :, 2]) % 256
+    Args:
+        size: tuple - (height, width)
+        seed: int - Random seed for reproducibility
     
-    img_array = np.stack([r, g, b], axis=-1)
-    img_array = np.clip(img_array, 0, 255).astype(np.uint8)
+    Returns:
+        numpy array - RGB image
+    """
+    if seed is not None:
+        np.random.seed(seed)
     
-    return Image.fromarray(img_array, 'RGB')
-
-
-def generate_pattern_image(width=256, height=256, pattern_type='natural'):
-    """Generate patterned images that simulate real photos."""
-    img_array = np.zeros((height, width, 3), dtype=np.uint8)
+    # Method 1: Perlin-like noise (using random with smoothing)
+    method = np.random.choice(['noise', 'gradient', 'mixed'])
     
-    if pattern_type == 'stripes':
-        for i in range(height):
-            color = int(128 + 60 * np.sin(i / 20))
-            img_array[i, :, :] = [color, color, color]
-        noise = np.random.normal(0, 15, img_array.shape)
-        img_array = np.clip(img_array + noise, 0, 255).astype(np.uint8)
+    if method == 'noise':
+        # Natural noise pattern
+        img = np.random.randint(0, 256, (*size, 3), dtype=np.uint8)
+        # Smooth it
+        from scipy.ndimage import gaussian_filter
+        img = gaussian_filter(img.astype(float), sigma=2)
+        img = np.clip(img, 0, 255).astype(np.uint8)
+    
+    elif method == 'gradient':
+        # Gradient pattern (like sky or landscape)
+        h, w = size
+        img = np.zeros((*size, 3), dtype=np.uint8)
         
-    elif pattern_type == 'checker':
-        block_size = 32
-        for i in range(0, height, block_size):
-            for j in range(0, width, block_size):
-                color = 200 if ((i // block_size) + (j // block_size)) % 2 == 0 else 80
-                img_array[i:i+block_size, j:j+block_size, :] = color
-        noise = np.random.normal(0, 10, img_array.shape)
-        img_array = np.clip(img_array + noise, 0, 255).astype(np.uint8)
+        for c in range(3):
+            gradient = np.linspace(50, 200, w, dtype=np.uint8)
+            img[:, :, c] = np.tile(gradient, (h, 1))
         
-    elif pattern_type == 'gradient':
-        for i in range(height):
-            for j in range(width):
-                r = int(255 * i / height)
-                g = int(255 * j / width)
-                b = int(128 + 50 * np.sin((i + j) / 30))
-                img_array[i, j] = [r, g, b]
-        noise = np.random.normal(0, 8, img_array.shape)
-        img_array = np.clip(img_array + noise, 0, 255).astype(np.uint8)
+        # Add some noise
+        noise = np.random.randint(-20, 20, (*size, 3), dtype=np.int16)
+        img = np.clip(img.astype(np.int16) + noise, 0, 255).astype(np.uint8)
+    
+    else:  # mixed
+        # Combination of patterns
+        img = np.random.randint(100, 180, (*size, 3), dtype=np.uint8)
         
-    else:  # natural
-        base_r = np.random.randint(50, 200)
-        base_g = np.random.randint(50, 200)
-        base_b = np.random.randint(50, 200)
-        
-        for i in range(height):
-            for j in range(width):
-                r = base_r + int(30 * np.sin(i / 50) * np.cos(j / 40))
-                g = base_g + int(30 * np.cos(i / 40) * np.sin(j / 50))
-                b = base_b + int(20 * np.sin((i + j) / 60))
-                img_array[i, j] = [
-                    np.clip(r, 0, 255),
-                    np.clip(g, 0, 255),
-                    np.clip(b, 0, 255)
-                ]
-        noise = np.random.normal(0, 12, img_array.shape)
-        img_array = np.clip(img_array + noise, 0, 255).astype(np.uint8)
+        # Add some structured patterns
+        for i in range(size[0]):
+            for j in range(size[1]):
+                if (i + j) % 10 == 0:
+                    img[i, j] = np.clip(img[i, j] + 30, 0, 255)
     
-    return Image.fromarray(img_array, 'RGB')
+    return img
 
 
-def generate_random_message(length=None):
-    """Generate a random secret message."""
-    if length is None:
-        length = random.randint(20, 200)
+def generate_stego_image(cover_img, method='lsb', seed=None):
+    """
+    Generate a stego image by embedding data in cover image.
     
-    templates = [
-        "Secret message: {}",
-        "Confidential data: {}",
-        "Hidden text: {}",
-        "Encrypted: {}",
-        "Private: {}"
-    ]
+    Args:
+        cover_img: numpy array - Cover image
+        method: str - Steganography method ('lsb', 'dct', 'dwt')
+        seed: int - Random seed
     
-    content = ''.join(random.choices(
-        string.ascii_letters + string.digits + ' ',
-        k=length
-    ))
-    
-    return random.choice(templates).format(content)
-
-
-def create_stego_image(cover_img, method='lsb'):
-    """Create a stego image using the specified method."""
-    message = generate_random_message()
-    
+    Returns:
+        numpy array - Stego image, or None if embedding fails
+    """
     try:
+        if seed is not None:
+            np.random.seed(seed)
+        
+        # Generate random secret message
+        msg_len = np.random.randint(50, 500)
+        secret_msg = ''.join(
+            chr(np.random.randint(32, 126)) for _ in range(msg_len)
+        )
+        
+        # Convert to PIL Image for embedding
+        cover_pil = Image.fromarray(cover_img)
+        
+        # Embed using selected method
         if method == 'lsb':
-            return lsb_encode(cover_img.copy(), message)
+            try:
+                stego_pil = lsb_encode(cover_pil, secret_msg)
+                return np.array(stego_pil)
+            except Exception as e:
+                logger.debug(f"LSB encoding failed: {e}")
+                return None
+        
         elif method == 'dct':
-            return encode_dct(cover_img.copy(), message)
+            try:
+                stego_pil = encode_dct(cover_pil, secret_msg)
+                return np.array(stego_pil)
+            except Exception as e:
+                logger.debug(f"DCT encoding failed: {e}")
+                return None
+        
         elif method == 'dwt':
-            return encode_dwt(cover_img.copy(), message)
+            try:
+                stego_pil = encode_dwt(cover_pil, secret_msg)
+                return np.array(stego_pil)
+            except Exception as e:
+                logger.debug(f"DWT encoding failed: {e}")
+                return None
+        
         else:
-            return lsb_encode(cover_img.copy(), message)
+            raise ValueError(f"Unknown method: {method}")
+    
     except Exception as e:
-        logger.warning(f"Encoding with {method} failed: {e}, using LSB fallback")
-        return lsb_encode(cover_img.copy(), message[:50])
+        logger.debug(f"Stego generation error: {e}")
+        return None
 
 
-def generate_training_data(n_samples=100, image_sizes=[(256, 256)]) -> Tuple[list, list]:
-    """Generate synthetic training data."""
+def generate_training_data(n_samples=200, image_size=(256, 256)):
+    """
+    Generate balanced dataset of cover and stego images.
+    
+    Args:
+        n_samples: int - Total samples to generate (will be split 50/50)
+        image_size: tuple - Image dimensions
+    
+    Returns:
+        tuple: (cover_images, stego_images)
+    """
+    logger.info(f"Generating {n_samples} training image pairs...")
+    
     cover_images = []
     stego_images = []
     
     methods = ['lsb', 'dct', 'dwt']
-    patterns = ['stripes', 'checker', 'gradient', 'natural', 'random']
-    samples_per_type = n_samples // 2
     
-    logger.info(f"Generating {samples_per_type} cover + {samples_per_type} stego images...")
-    
-    # Cover images
-    for i in range(samples_per_type):
-        size = random.choice(image_sizes)
-        pattern = random.choice(patterns)
+    for i in range(n_samples):
+        # Generate cover image
+        cover_img = generate_random_image(image_size, seed=i)
+        cover_images.append(cover_img)
         
-        try:
-            if pattern == 'random':
-                cover_img = generate_random_image(size[0], size[1])
-            else:
-                cover_img = generate_pattern_image(size[0], size[1], pattern)
-            
-            cover_array = np.array(cover_img.convert('RGB'))
-            cover_images.append(cover_array)
-            
-            if (i + 1) % 10 == 0:
-                logger.info(f"Generated {i + 1}/{samples_per_type} cover images")
-        except Exception as e:
-            logger.warning(f"Failed to generate cover image {i}: {e}")
-            continue
-    
-    # Stego images
-    for i in range(samples_per_type):
-        size = random.choice(image_sizes)
-        pattern = random.choice(patterns)
-        method = random.choice(methods)
+        # Generate stego image using random method
+        method = methods[i % len(methods)]
+        stego_img = generate_stego_image(cover_img, method=method, seed=i)
         
-        try:
-            if pattern == 'random':
-                cover_img = generate_random_image(size[0], size[1])
-            else:
-                cover_img = generate_pattern_image(size[0], size[1], pattern)
-            
-            stego_img = create_stego_image(cover_img, method)
-            stego_array = np.array(stego_img.convert('RGB'))
-            stego_images.append(stego_array)
-            
-            if (i + 1) % 10 == 0:
-                logger.info(f"Generated {i + 1}/{samples_per_type} stego images")
-        except Exception as e:
-            logger.warning(f"Failed to generate stego image {i}: {e}")
-            continue
+        if stego_img is not None:
+            stego_images.append(stego_img)
+        else:
+            # If stego generation fails, try different method
+            for backup_method in methods:
+                if backup_method != method:
+                    stego_img = generate_stego_image(cover_img, method=backup_method, seed=i+1000)
+                    if stego_img is not None:
+                        stego_images.append(stego_img)
+                        break
+        
+        if (i + 1) % 25 == 0:
+            logger.info(f"Generated {i + 1}/{n_samples} image pairs")
     
-    logger.info(f"Generated {len(cover_images)} cover + {len(stego_images)} stego images")
+    logger.info(f"Successfully generated {len(cover_images)} cover and {len(stego_images)} stego images")
     return cover_images, stego_images
 
 
-def train_detector(n_samples=100, save_path=None):
-    """Train the Random Forest ML detector with synthetic data."""
+# ============================================================================
+#  Model Training
+# ============================================================================
+
+def train_detector(n_samples=200, image_size=(256, 256), save_path=None):
+    """
+    Train Random Forest steganography detector.
+    
+    Args:
+        n_samples: int - Number of training image pairs
+        image_size: tuple - Image dimensions
+        save_path: str - Path to save model (optional)
+    
+    Returns:
+        dict: Training metrics
+    """
     logger.info("=" * 70)
-    logger.info("TRAINING RANDOM FOREST STEGANOGRAPHY DETECTOR")
+    logger.info("Starting ML Model Training")
     logger.info("=" * 70)
     
-    cover_images, stego_images = generate_training_data(n_samples)
-    
-    if len(cover_images) < 10 or len(stego_images) < 10:
-        logger.error("Insufficient training data generated")
-        return {"error": "Insufficient training data"}
-    
-    detector = StegoDetectorML()
-    logger.info(f"\nTraining on {len(cover_images)} cover + {len(stego_images)} stego images...")
-    metrics = detector.train(cover_images, stego_images, validation_split=0.2)
-    
-    if "error" not in metrics:
-        save_path = save_path or MODEL_PATH
-        detector.save_model(save_path)
+    try:
+        # Generate training data
+        logger.info(f"Step 1: Generating synthetic training data...")
+        cover_imgs, stego_imgs = generate_training_data(n_samples, image_size)
+        
+        if len(cover_imgs) == 0 or len(stego_imgs) == 0:
+            error_msg = "Failed to generate training data"
+            logger.error(error_msg)
+            return {"error": error_msg}
+        
+        logger.info(f"  ✓ Generated {len(cover_imgs)} cover images")
+        logger.info(f"  ✓ Generated {len(stego_imgs)} stego images")
+        
+        # Initialize detector
+        logger.info(f"\nStep 2: Initializing detector...")
+        detector = StegoDetectorML()
+        logger.info(f"  ✓ Detector initialized")
+        
+        # Train model
+        logger.info(f"\nStep 3: Training Random Forest model...")
+        logger.info(f"  - Algorithm: Random Forest")
+        logger.info(f"  - Estimators: 200")
+        logger.info(f"  - Features: 9 statistical features")
+        logger.info(f"  - Samples: {len(cover_imgs) + len(stego_imgs)}")
+        
+        metrics = detector.train(cover_imgs, stego_imgs, validation_split=0.2)
+        
+        if "error" in metrics:
+            logger.error(f"Training failed: {metrics['error']}")
+            return metrics
+        
+        logger.info(f"\nStep 4: Training Results")
+        logger.info(f"  ✓ Train Accuracy: {metrics['train_accuracy']:.1%}")
+        logger.info(f"  ✓ Validation Accuracy: {metrics['val_accuracy']:.1%}")
+        logger.info(f"  ✓ Precision: {metrics['val_precision']:.1%}")
+        logger.info(f"  ✓ Recall: {metrics['val_recall']:.1%}")
+        logger.info(f"  ✓ F1 Score: {metrics['val_f1']:.4f}")
+        
+        # Save model
+        logger.info(f"\nStep 5: Saving model...")
+        save_location = save_path or MODEL_PATH
+        success = detector.save_model(save_location)
+        
+        if success:
+            logger.info(f"  ✓ Model saved to {save_location}")
+        else:
+            logger.warning(f"  ⚠ Failed to save model")
+        
+        # Get feature importance
+        logger.info(f"\nStep 6: Feature Importance")
+        importance = detector.get_feature_importance()
+        for feature, importance_val in sorted(importance.items(), key=lambda x: x[1], reverse=True):
+            logger.info(f"  - {feature}: {importance_val:.4f}")
         
         logger.info("\n" + "=" * 70)
-        logger.info("✅ TRAINING COMPLETE")
-        logger.info("=" * 70)
-        logger.info(f"Train Accuracy:      {metrics['train_accuracy']:.2%}")
-        logger.info(f"Validation Accuracy: {metrics['val_accuracy']:.2%}")
-        logger.info(f"Precision:           {metrics['val_precision']:.2%}")
-        logger.info(f"Recall:              {metrics['val_recall']:.2%}")
-        logger.info(f"F1 Score:            {metrics['val_f1']:.4f}")
-        logger.info(f"Model saved to:      {save_path}")
+        logger.info("Training Complete! ✓")
         logger.info("=" * 70)
         
-        importance = detector.get_feature_importance()
-        logger.info("\n📊 Top Features (Random Forest):")
-        for i, (name, imp) in enumerate(sorted(importance.items(), key=lambda x: x[1], reverse=True)):
-            logger.info(f"  {i+1}. {name:.<40} {imp:.4f}")
-    else:
-        logger.error(f"Training failed: {metrics['error']}")
+        return metrics
     
-    return metrics
+    except Exception as e:
+        logger.error(f"Training error: {str(e)}", exc_info=True)
+        return {"error": str(e)}
 
 
-if __name__ == "__main__":
+# ============================================================================
+#  CLI Interface
+# ============================================================================
+
+def main():
+    """CLI interface for training the detector."""
     import argparse
     
     parser = argparse.ArgumentParser(
-        description="Train Random Forest steganography detector",
+        description='Train ML Steganography Detector',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python train_detector.py --samples 100
-  python train_detector.py -n 200
+  python train_ml_detector.py                    # Train with 200 samples
+  python train_ml_detector.py --samples 500      # Train with 500 samples
+  python train_ml_detector.py --samples 100 --size 128  # Custom size
         """
     )
     
     parser.add_argument(
-        "--samples", "-n",
+        '--samples',
         type=int,
-        default=100,
-        help="Number of image pairs to generate (default: 100)"
+        default=200,
+        help='Number of image pairs to generate (default: 200)'
     )
     
     parser.add_argument(
-        "--output", "-o",
+        '--size',
+        type=int,
+        default=256,
+        help='Image size (size×size pixels, default: 256)'
+    )
+    
+    parser.add_argument(
+        '--output',
         type=str,
         default=None,
-        help="Output path for model (default: src/detect_stego/models/stego_detector_rf.pkl)"
+        help='Save path for model (default: src/detect_stego/models/stego_detector_rf.pkl)'
+    )
+    
+    parser.add_argument(
+        '--verbose',
+        action='store_true',
+        help='Enable verbose logging'
     )
     
     args = parser.parse_args()
     
-    logger.info(f"Starting training with {args.samples} image pairs...")
-    metrics = train_detector(n_samples=args.samples, save_path=args.output)
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
     
-    if "error" not in metrics:
-        print("\n✅ Model training completed successfully!")
-        print(f"   Accuracy: {metrics['val_accuracy']:.1%}")
+    # Train detector
+    metrics = train_detector(
+        n_samples=args.samples,
+        image_size=(args.size, args.size),
+        save_path=args.output
+    )
+    
+    # Print summary
+    print("\n" + "="*70)
+    print("TRAINING SUMMARY")
+    print("="*70)
+    
+    if "error" in metrics:
+        print(f"❌ Training failed: {metrics['error']}")
+        sys.exit(1)
     else:
-        print(f"\n❌ Training failed: {metrics['error']}")
+        print(f"✅ Training successful!")
+        print(f"\n📊 Metrics:")
+        print(f"   Train Accuracy:  {metrics['train_accuracy']:.1%}")
+        print(f"   Val Accuracy:    {metrics['val_accuracy']:.1%}")
+        print(f"   Precision:       {metrics['val_precision']:.1%}")
+        print(f"   Recall:          {metrics['val_recall']:.1%}")
+        print(f"   F1 Score:        {metrics['val_f1']:.4f}")
+        print("\n🎉 Model trained and saved!")
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,38 +1,16 @@
+# Create clean .gitignore with no duplicates
 @"
+# ============================================================================
+# VIRTUAL ENVIRONMENTS
+# ============================================================================
 venv/
-.venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-.DS_Store
-.idea/
-.vscode/
-*.pth
-"@ | Out-File -Encoding UTF8 .gitignore
-
-# ============================================================================
-# MODEL FILES (Large Binary Files - Track but optimize)
-# ============================================================================
-# Keep existing pkl files in repo, but ignore new ones during development
-# Uncomment the line below to stop tracking new pkl files
-# src/detect_stego/models/*.pkl
+ENV/
+env/
+.venv
+env.bak/
+venv.bak/
+.venv-1/
+venv-1/
 
 # ============================================================================
 # PYTHON
@@ -62,16 +40,6 @@ share/python-wheels/
 MANIFEST
 
 # ============================================================================
-# VIRTUAL ENVIRONMENTS
-# ============================================================================
-venv/
-ENV/
-env/
-.venv
-env.bak/
-venv.bak/
-
-# ============================================================================
 # IDE & EDITORS
 # ============================================================================
 .vscode/
@@ -87,7 +55,7 @@ venv.bak/
 *.sublime-workspace
 
 # ============================================================================
-# ENVIRONMENT VARIABLES
+# ENVIRONMENT VARIABLES & SECRETS
 # ============================================================================
 .env
 .env.local
@@ -124,12 +92,11 @@ tmp/
 # ============================================================================
 # STREAMLIT
 # ============================================================================
-.streamlit/
 .streamlit/secrets.toml
 streamlit_cache/
 
 # ============================================================================
-# TESTING
+# TESTING & COVERAGE
 # ============================================================================
 .pytest_cache/
 .coverage
@@ -144,12 +111,21 @@ htmlcov/
 *.ipynb_checkpoints
 
 # ============================================================================
-# LARGE FILES (Optional - uncomment if needed)
+# MACHINE LEARNING MODELS (Large Binary Files)
 # ============================================================================
-# *.pkl
-# *.pth
-# *.h5
-# *.model
+# Don't track trained model files - they should be generated locally
+src/detect_stego/models/*.pkl
+src/detect_stego/models/*.joblib
+*.pkl
+*.joblib
+
+# ============================================================================
+# MODEL CHECKPOINTS
+# ============================================================================
+*.pt
+*.pth
+*.h5
+*.model
 
 # ============================================================================
 # OS SPECIFIC
@@ -161,7 +137,13 @@ Thumbs.db
 ._*
 
 # ============================================================================
-# CACHE
+# CACHE & COMPILED
 # ============================================================================
 .cache/
 *.cache
+dist/
+build/
+"@ | Out-File -Encoding UTF8 .gitignore
+
+# Verify the file
+Get-Content .gitignore
