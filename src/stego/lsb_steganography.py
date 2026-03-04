@@ -14,14 +14,24 @@ import numpy as np
 # ============================================================================
 
 def apply_filter(img, filter_type):
-    """Apply optional image filter for preprocessing."""
-    filters = {
-        "None": lambda x: x,
-        "Blur": lambda x: x.filter(ImageFilter.BLUR),
-        "Sharpen": lambda x: x.filter(ImageFilter.SHARPEN),
-        "Grayscale": lambda x: x.convert('L').convert('RGB')
-    }
-    return filters.get(filter_type, lambda x: x)(img)
+    """
+    Apply optional image filter for preprocessing.
+    
+    Args:
+        img (PIL.Image): Input image
+        filter_type (str): Type of filter ('None', 'Blur', 'Sharpen', 'Grayscale')
+    
+    Returns:
+        PIL.Image: Filtered image or original if filter_type is 'None'
+    """
+    if filter_type == "Blur":
+        return img.filter(ImageFilter.GaussianBlur(radius=2))
+    elif filter_type == "Sharpen":
+        return img.filter(ImageFilter.SHARPEN)
+    elif filter_type == "Grayscale":
+        return img.convert('L').convert('RGB')
+    else:  # "None" or default
+        return img
 
 
 # ============================================================================
@@ -30,102 +40,109 @@ def apply_filter(img, filter_type):
 
 def encode_image(img, secret_text, filter_type="None"):
     """
-    Encode secret message into image using LSB (Least Significant Bit) method.
-    
-    Algorithm:
-    1. Apply optional image filter
-    2. Convert image to numpy array
-    3. Convert secret text to binary with terminator
-    4. Replace LSB of each pixel channel with message bits
-    5. Return encoded image
-    
-    Capacity:
-    - 3 bits per pixel (RGB: 1 bit each)
-    - Image size 800×600 = 1,440,000 bits ≈ 180 KB
+    Encode secret message into image using LSB steganography.
     
     Args:
         img (PIL.Image): Input image
-        secret_text (str): Secret message to embed
-        filter_type (str): Optional filter ("None", "Blur", "Sharpen", "Grayscale")
+        secret_text (str): Message to encode
+        filter_type (str): Filter type ('None', 'Blur', 'Sharpen', 'Grayscale')
     
     Returns:
-        PIL.Image: Encoded image with hidden message
+        PIL.Image: Encoded image
     
     Raises:
-        ValueError: If message exceeds image capacity
+        ValueError: If message is too large for image
     """
-    # Apply image filter if specified
+    # Apply optional filter
     img = apply_filter(img, filter_type)
     
-    # Convert image to numpy array for efficient pixel manipulation
-    img_array = np.array(img, dtype=np.uint8)
+    # Convert to RGB if necessary
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
     
-    # Convert secret text to binary format with terminator
-    binary_secret = ''.join(format(ord(i), '08b') for i in secret_text) + '11111110'
+    # Calculate capacity
+    img_array = np.array(img)
+    max_bytes = img_array.size // 8  # Total bits / 8
     
-    # Calculate maximum capacity (3 bits per pixel)
-    max_bits = img_array.shape[0] * img_array.shape[1] * 3
+    # Encode message as UTF-8 bytes
+    secret_bytes = secret_text.encode('utf-8')
+    message_length = len(secret_bytes)
     
-    # Check if message fits in image
-    if len(binary_secret) > max_bits:
+    # Check capacity: 2 bytes for length + message
+    if message_length + 2 > max_bytes:
         raise ValueError(
-            f"Message too large for LSB. "
-            f"Max capacity: {max_bits // 8} characters, "
-            f"Your message: {len(binary_secret) // 8} characters"
+            f"Message too large! Max: {max_bytes - 2} bytes, "
+            f"got: {message_length} bytes"
         )
     
-    # Embed message bits into LSB of each color channel
-    data_index = 0
-    for i in range(img_array.shape[0]):
-        for j in range(img_array.shape[1]):
-            for k in range(3):
-                if data_index < len(binary_secret):
-                    bit = int(binary_secret[data_index])
-                    img_array[i, j, k] = (img_array[i, j, k] & 254) | bit
-                    data_index += 1
+    # Flatten image array
+    flat = img_array.flatten()
     
-    return Image.fromarray(img_array)
+    # Prepare bit string: 16-bit length prefix + message bits
+    bit_string = format(message_length, '016b')  # 16-bit length
+    for byte in secret_bytes:
+        bit_string += format(byte, '08b')
+    
+    # Add terminator (optional, helps with decoding)
+    bit_string += '11111110'
+    
+    # Embed bits into LSBs
+    for i, bit in enumerate(bit_string):
+        if i < len(flat):
+            flat[i] = (flat[i] & 0xFE) | int(bit)  # Replace LSB
+    
+    # Reshape and convert back to image
+    encoded_array = flat.reshape(img_array.shape).astype(np.uint8)
+    encoded_img = Image.fromarray(encoded_array, 'RGB')
+    
+    return encoded_img
 
 
 def decode_image(img):
     """
-    Decode secret message from image using LSB method.
-    
-    Algorithm:
-    1. Convert image to numpy array
-    2. Extract LSB from each pixel channel sequentially
-    3. Group bits into bytes (8 bits = 1 character)
-    4. Convert bytes to ASCII characters
-    5. Stop when terminator bit sequence found
-    6. Return decoded message
+    Decode secret message from LSB-encoded image.
     
     Args:
-        img (PIL.Image): Encoded image containing hidden message
+        img (PIL.Image): Encoded image
     
     Returns:
-        str: Decoded message, or None if no valid message found
+        str: Decoded message (empty string if no message found)
     """
-    # Convert image to numpy array
-    img_array = np.array(img, dtype=np.uint8)
+    # Convert to RGB if necessary
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
     
-    # Extract all LSBs from pixels in order
-    binary_data = ''
-    for i in range(img_array.shape[0]):
-        for j in range(img_array.shape[1]):
-            for k in range(3):
-                binary_data += str(img_array[i, j, k] & 1)
+    # Convert image to array
+    img_array = np.array(img)
+    flat = img_array.flatten()
     
-    # Convert binary string to characters
-    decoded_text = ''
-    for i in range(0, len(binary_data), 8):
-        byte = binary_data[i:i+8]
-        
-        # Check for terminator sequence
-        if byte == '11111110':
-            break
-        
-        # Only process complete bytes
-        if len(byte) == 8:
-            decoded_text += chr(int(byte, 2))
+    # Extract bits
+    bits = ''.join(str(pixel & 1) for pixel in flat)
     
-    return decoded_text if decoded_text else None
+    # Extract message length (first 16 bits)
+    if len(bits) < 16:
+        return ''
+    
+    message_length = int(bits[:16], 2)
+    
+    # Check if message length is valid
+    if message_length == 0 or message_length > len(bits) // 8:
+        return ''
+    
+    # Extract message bits
+    message_bits = bits[16 : 16 + (message_length * 8)]
+    
+    # Convert bits to bytes
+    message_bytes = bytearray()
+    for i in range(0, len(message_bits), 8):
+        byte_bits = message_bits[i : i + 8]
+        if len(byte_bits) == 8:
+            message_bytes.append(int(byte_bits, 2))
+    
+    # Decode from UTF-8
+    try:
+        message = message_bytes.decode('utf-8')
+        return message
+    except UnicodeDecodeError:
+        # If UTF-8 decode fails, try with error handling
+        return message_bytes.decode('utf-8', errors='replace')

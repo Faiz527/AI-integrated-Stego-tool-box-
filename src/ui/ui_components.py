@@ -523,6 +523,88 @@ def _show_encode_help():
     """)
 
 
+def _show_decode_help():
+    """Show decoding help section."""
+    st.markdown("""
+        <div class="card">
+            <div class="card-header">📖 How Decoding Works</div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("""
+    ### What is Decoding?
+    
+    Decoding is the process of extracting hidden messages from steganographic images.
+    The decoder automatically detects which method was used.
+    
+    ---
+    
+    ### How It Works
+    
+    1. **Method Detection** - System tries all steganography methods
+    2. **Quality Scoring** - Best match is selected based on confidence
+    3. **Message Extraction** - Hidden data is recovered
+    4. **Decryption** - If encrypted, password decrypts the message
+    
+    ---
+    
+    ### Methods Comparison
+    """)
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("""
+        **⚡ LSB Decoding**
+        - Fastest extraction
+        - Works on spatial domain
+        - Detection: Automatic
+        - Speed: Instant
+        """)
+    
+    with col2:
+        st.markdown("""
+        **🛡️ DCT Decoding**
+        - Frequency analysis
+        - More secure extraction
+        - Detection: Automatic
+        - Speed: Fast
+        """)
+    
+    with col3:
+        st.markdown("""
+        **🔐 DWT Decoding**
+        - Wavelet coefficient analysis
+        - Highest security
+        - Detection: Automatic
+        - Speed: Moderate
+        """)
+    
+    st.divider()
+    
+    st.markdown("""
+    ### Troubleshooting
+    
+    **"No message found"**
+    - Image doesn't contain hidden data
+    - Image was compressed/modified
+    - Try using the original PNG file
+    
+    **"Decryption failed"**
+    - Wrong password entered
+    - Data corrupted during transfer
+    - Try re-uploading the image
+    
+    **Best Practices**
+    
+    1. **Use original files** - Don't modify or screenshot
+    2. **Keep PNG format** - JPEG compression corrupts data
+    3. **Correct password** - Encryption password is case-sensitive
+    4. **Check file integrity** - Ensure image wasn't altered
+    5. **Try all methods** - System auto-detects, but manual try helps
+    """)
+
+
 # ============================================================================
 #                           DECODE SECTION
 # ============================================================================
@@ -621,7 +703,7 @@ def show_decode_section():
 
 
 def _perform_decoding(image_file, use_encryption, decryption_password):
-    """Perform the decoding operation."""
+    """Perform the decoding operation with improved method detection."""
     try:
         progress = st.progress(0)
         status = st.empty()
@@ -636,8 +718,9 @@ def _perform_decoding(image_file, use_encryption, decryption_password):
         
         decoded_message = None
         method_used = None
+        confidence_scores = {}
         
-        # Try each method
+        # Try each method with quality scoring
         methods = [
             ("LSB", lsb_decode),
             ("Hybrid DCT", dct_decode),
@@ -650,12 +733,40 @@ def _perform_decoding(image_file, use_encryption, decryption_password):
             
             try:
                 extracted = method_func(image)
-                if extracted and is_valid_message(extracted):
-                    decoded_message = extracted
-                    method_used = method_name
-                    break
-            except:
+                
+                # Score the extraction quality
+                if extracted and len(extracted) > 0:
+                    # Calculate confidence based on:
+                    # 1. Message length (reasonable length)
+                    # 2. UTF-8 validity (clean characters)
+                    # 3. Printable characters ratio
+                    
+                    confidence = _calculate_extraction_confidence(extracted)
+                    confidence_scores[method_name] = (extracted, confidence)
+                    
+                    logger.debug(
+                        f"{method_name}: Confidence={confidence:.2f}, "
+                        f"Length={len(extracted)}"
+                    )
+                    
+            except Exception as e:
+                logger.debug(f"{method_name} extraction error: {str(e)}")
                 continue
+        
+        # Select best result based on confidence
+        if confidence_scores:
+            best_method = max(
+                confidence_scores.items(),
+                key=lambda x: x[1][1]  # Sort by confidence
+            )
+            method_used = best_method[0]
+            decoded_message = best_method[1][0]
+            confidence = best_method[1][1]
+            
+            logger.info(
+                f"Best match: {method_used} "
+                f"(confidence: {confidence:.2f})"
+            )
         
         if decoded_message and method_used:
             status.text("Message found! Processing...")
@@ -665,8 +776,9 @@ def _perform_decoding(image_file, use_encryption, decryption_password):
             if use_encryption and decryption_password:
                 try:
                     decoded_message = decrypt_message(decoded_message, decryption_password)
-                except:
-                    show_error("Decryption failed - wrong password?")
+                except Exception as e:
+                    show_error(f"Decryption failed - wrong password?")
+                    logger.error(f"Decryption error: {str(e)}")
                     progress.empty()
                     status.empty()
                     return
@@ -681,9 +793,16 @@ def _perform_decoding(image_file, use_encryption, decryption_password):
             
             # Log activity
             if hasattr(st.session_state, 'user_id') and st.session_state.user_id:
-                log_activity(st.session_state.user_id, "DECODE", f"Decoded with {method_used}")
+                log_activity(
+                    st.session_state.user_id,
+                    "DECODE",
+                    f"Decoded with {method_used}"
+                )
             
-            show_success("Message found! Check the Results tab.")
+            show_success(
+                f"Message found using **{method_used}**! "
+                f"Check the Results tab."
+            )
             
         else:
             progress.empty()
@@ -705,6 +824,63 @@ def _perform_decoding(image_file, use_encryption, decryption_password):
         logger.error(f"Decoding error: {str(e)}")
 
 
+def _calculate_extraction_confidence(message):
+    """
+    Calculate confidence score for extracted message.
+    Higher score = more likely to be correct extraction.
+    
+    Scoring criteria:
+    1. UTF-8 validity (no replacement chars)
+    2. Printable character ratio
+    3. Reasonable message length
+    4. No excessive control characters
+    
+    Args:
+        message (str): Extracted message
+    
+    Returns:
+        float: Confidence score (0.0 - 1.0)
+    """
+    if not message or len(message) == 0:
+        return 0.0
+    
+    score = 0.5  # Base score
+    
+    # Criterion 1: Printable characters
+    printable_count = sum(
+        1 for c in message 
+        if c.isprintable() or c.isspace()
+    )
+    printable_ratio = printable_count / len(message)
+    score += printable_ratio * 0.3
+    
+    # Criterion 2: Message length (prefer messages between 5 and 1000 chars)
+    msg_len = len(message)
+    if 5 < msg_len < 1000:
+        score += 0.15
+    elif msg_len >= 1000:
+        score += 0.05  # Very long messages are less common
+    
+    # Criterion 3: Control character ratio (should be low)
+    control_count = sum(
+        1 for c in message 
+        if ord(c) < 32 and c not in '\n\r\t'
+    )
+    control_ratio = control_count / len(message)
+    if control_ratio < 0.1:  # Less than 10% control chars is good
+        score += 0.05
+    
+    # Criterion 4: Repeated null bytes (bad sign)
+    if '\x00' in message:
+        # Count consecutive nulls
+        null_sequences = message.count('\x00\x00')
+        if null_sequences > 3:
+            score -= 0.3  # Penalize multiple null sequences
+    
+    # Ensure score is between 0 and 1
+    return max(0.0, min(1.0, score))
+
+
 def _display_decode_results():
     """Display decoding results."""
     message = st.session_state.last_decoded_message
@@ -713,73 +889,47 @@ def _display_decode_results():
     # Success banner
     st.markdown("""
         <div class="result-container animate-scale-in" style="text-align: center; margin-bottom: 1.5rem;">
-            <p style="font-size: 3rem; margin-bottom: 0.5rem;">🔓</p>
+            <p style="font-size: 3rem; margin-bottom: 0.5rem;">✅</p>
             <h3 style="color: #3FB950; margin: 0;">Message Extracted!</h3>
+            <p style="color: #8B949E;">Hidden message successfully decoded</p>
         </div>
     """, unsafe_allow_html=True)
     
-    # Method badge
-    st.markdown(f'<span class="badge badge-success">Detected: {method}</span>', unsafe_allow_html=True)
-    
-    st.divider()
-    
-    # Message display
+    # Display the message
     st.markdown('<div class="card card-success">', unsafe_allow_html=True)
-    st.markdown("**📩 Hidden Message:**")
-    st.text_area(
-        "Extracted Message",
-        value=message,
-        height=200,
-        disabled=True,
-        label_visibility="collapsed"
-    )
+    st.markdown("**📩 Decoded Message**")
+    st.code(message, language="text")
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Stats
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("Characters", len(message))
-    with col2:
+    # Message info
+    cols = st.columns(3)
+    with cols[0]:
         st.metric("Method", method)
+    with cols[1]:
+        st.metric("Length", f"{len(message)} chars")
+    with cols[2]:
+        st.metric("Size", f"{len(message.encode())} bytes")
     
-    # Copy hint
-    st.caption("💡 Select the text above to copy it")
-
-
-def _show_decode_help():
-    """Show decoding help section."""
-    st.markdown("""
-        <div class="card">
-            <div class="card-header">📖 How Decoding Works</div>
-        </div>
-    """, unsafe_allow_html=True)
+    # Copy to clipboard
+    st.divider()
     
-    st.markdown("""
-    ### Automatic Method Detection
+    col1, col2 = st.columns(2)
     
-    The decoder automatically tries all three methods (LSB, DCT, DWT) to find your hidden message.
-    You don't need to remember which method was used for encoding.
+    with col1:
+        if st.button("📋 Copy Message", use_container_width=True):
+            st.code(message)
+            show_success("Message ready to copy!")
     
-    ---
-    
-    ### Troubleshooting
-    
-    | Problem | Solution |
-    |---------|----------|
-    | "No message found" | Use the original PNG file |
-    | Garbled text | Wrong decryption password |
-    | Empty result | Image may be corrupted |
-    | Partial message | Don't use JPG format |
-    
-    ---
-    
-    ### Important Tips
-    
-    1. **Use original file** - Don't screenshot or convert
-    2. **PNG format** - JPEG destroys hidden data
-    3. **Correct password** - If encrypted, use exact password
-    4. **Don't resize** - Maintains data integrity
-    """)
+    with col2:
+        # Download as file
+        message_bytes = message.encode('utf-8')
+        st.download_button(
+            label="⬇️ Download as Text",
+            data=message_bytes,
+            file_name="decoded_message.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
 
 
 # ============================================================================

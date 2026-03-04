@@ -1,7 +1,10 @@
 """
 Watermarking Module
 ===================
-Provides watermarking functionality for image protection.
+Image watermarking techniques:
+  - Text watermark (visible)
+  - LSB watermark (invisible)
+  - Alpha blending (semi-visible)
 """
 
 from .watermark import apply_text_watermark, apply_lsb_watermark, apply_alpha_blending_watermark
