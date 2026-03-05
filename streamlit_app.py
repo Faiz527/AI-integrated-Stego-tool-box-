@@ -6,10 +6,34 @@ Main entry point - orchestrates all UI components.
 """
 from pathlib import Path
 import sys
+import streamlit as st  # ← Add this import at the very top
 
 # Configure base path
 BASE_PATH = Path(__file__).parent.absolute()
 sys.path.insert(0, str(BASE_PATH))
+
+# Initialize Streamlit secret management
+@st.cache_resource
+def load_environment():
+    """Load environment variables from Streamlit secrets or .env"""
+    import os
+    from dotenv import load_dotenv
+    
+    # Load .env for local development
+    env_path = BASE_PATH / ".env"
+    if env_path.exists():
+        load_dotenv(dotenv_path=str(env_path))
+    
+    return {
+        'db_host': st.secrets.get('DB_HOST', os.getenv('DB_HOST', 'localhost')),
+        'db_port': st.secrets.get('DB_PORT', os.getenv('DB_PORT', '5432')),
+        'db_name': st.secrets.get('DB_NAME', os.getenv('DB_NAME', 'stegnography')),
+        'db_user': st.secrets.get('DB_USER', os.getenv('DB_USER', 'postgres')),
+        'db_password': st.secrets.get('DB_PASSWORD', os.getenv('DB_PASSWORD', 'Password'))
+    }
+
+# Load environment once
+env = load_environment()
 
 import streamlit as st
 from src.db.db_utils import (
