@@ -6,11 +6,48 @@ Main entry point - orchestrates all UI components.
 """
 from pathlib import Path
 import sys
-import streamlit as st  # ← Add this import at the very top
+import streamlit as st
+import os
+from dotenv import load_dotenv
 
 # Configure base path
 BASE_PATH = Path(__file__).parent.absolute()
 sys.path.insert(0, str(BASE_PATH))
+
+# Load environment from .env for local testing
+load_dotenv()
+
+# ============================================================================
+#                    DATABASE CONFIG (Neon or Render)
+# ============================================================================
+
+def get_db_config():
+    """Get database config from Streamlit secrets or environment variables"""
+    
+    # Try Neon format first (from Streamlit Cloud secrets)
+    if hasattr(st, 'secrets') and 'postgres' in st.secrets:
+        neon_config = st.secrets['postgres']
+        return {
+            'host': neon_config.get('host'),
+            'port': int(neon_config.get('port', 5432)),
+            'database': neon_config.get('dbname'),
+            'user': neon_config.get('user'),
+            'password': neon_config.get('password'),
+            'sslmode': neon_config.get('sslmode', 'require')
+        }
+    
+    # Fallback to environment variables (.env)
+    return {
+        'host': os.getenv('DB_HOST', 'localhost'),
+        'port': int(os.getenv('DB_PORT', 5432)),
+        'database': os.getenv('DB_NAME', 'stego_database'),
+        'user': os.getenv('DB_USER', 'postgres'),
+        'password': os.getenv('DB_PASSWORD', 'password'),
+        'sslmode': 'require'
+    }
+
+# Initialize config
+DB_CONFIG = get_db_config()
 
 # Initialize Streamlit secret management
 @st.cache_resource

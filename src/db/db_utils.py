@@ -26,26 +26,35 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 load_dotenv(dotenv_path=str(PROJECT_ROOT / '.env'))
 
-# Database configuration - support both local (.env) and cloud (st.secrets)
+# ============================================================================
+#                    DATABASE CONFIGURATION
+# ============================================================================
+
 def get_db_config():
     """Get database config from Streamlit secrets (cloud) or .env (local)"""
     try:
-        # Try Streamlit secrets first (used on Streamlit Cloud)
-        return {
+        config = {
             'host': st.secrets.get('DB_HOST', os.getenv('DB_HOST', 'localhost')),
             'port': st.secrets.get('DB_PORT', os.getenv('DB_PORT', '5432')),
-            'database': st.secrets.get('DB_NAME', os.getenv('DB_NAME', 'stegnography')),
-            'user': st.secrets.get('DB_USER', os.getenv('DB_USER', 'postgres')),
-            'password': st.secrets.get('DB_PASSWORD', os.getenv('DB_PASSWORD', 'Password'))
+            'database': st.secrets.get('DB_NAME', os.getenv('DB_NAME', 'neondb')),
+            'user': st.secrets.get('DB_USER', os.getenv('DB_USER', 'neondb_owner')),
+            'password': st.secrets.get('DB_PASSWORD', os.getenv('DB_PASSWORD', ''))
         }
+        
+        # Add SSL mode for Neon
+        sslmode = st.secrets.get('DB_SSLMODE', os.getenv('DB_SSLMODE', 'require'))
+        if sslmode == 'require':
+            config['sslmode'] = 'require'
+        
+        return config
     except:
-        # Fallback to environment variables
         return {
             'host': os.getenv('DB_HOST', 'localhost'),
             'port': os.getenv('DB_PORT', '5432'),
-            'database': os.getenv('DB_NAME', 'stegnography'),
-            'user': os.getenv('DB_USER', 'postgres'),
-            'password': os.getenv('DB_PASSWORD', 'Password')
+            'database': os.getenv('DB_NAME', 'neondb'),
+            'user': os.getenv('DB_USER', 'neondb_owner'),
+            'password': os.getenv('DB_PASSWORD', ''),
+            'sslmode': os.getenv('DB_SSLMODE', 'require')
         }
 
 DB_CONFIG = get_db_config()
@@ -150,15 +159,15 @@ def _clear_login_attempts(identifier: str):
 def get_db_connection():
     """
     Establish PostgreSQL database connection.
-    
-    Returns:
-        psycopg2.connection: Database connection object
-    
-    Raises:
-        DatabaseError: If connection fails
     """
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
+        config = DB_CONFIG.copy()
+        
+        # For Neon, ensure SSL is enabled
+        if 'sslmode' not in config:
+            config['sslmode'] = 'require'
+        
+        conn = psycopg2.connect(**config)
         logger.info("Database connection successful")
         return conn
     except psycopg2.Error as e:
