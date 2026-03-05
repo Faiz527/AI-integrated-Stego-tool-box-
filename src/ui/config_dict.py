@@ -110,7 +110,7 @@ ERROR_MESSAGES = {
     "empty_fields": "Please enter both username and password",
     "fields_required": "Please fill all fields",
     "passwords_mismatch": "Passwords do not match",
-    "min_password_length": "Password must be at least 6 characters",
+    "min_password_length": "Password must be at least 8 characters",
     "invalid_credentials": "Invalid username or password",
     "username_exists": "Username already exists",
     "no_message": "Please enter a message",
@@ -223,6 +223,6 @@ COMPARISON_TABLE = {
 
 # Validation Config
 VALIDATION = {
-    "min_password_length": 6,
+    "min_password_length": 8,  
     "max_message_chars": 1000
 }

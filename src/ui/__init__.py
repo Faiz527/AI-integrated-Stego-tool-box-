@@ -23,8 +23,8 @@ from .ui_components import (
     show_statistics_section,
     show_auth_section,
     show_batch_processing_section,
-    show_login_form,
-    show_register_form
+    show_pixel_selector_section,
+    show_redundancy_section
 )
 from .styles import apply_dark_theme
 
@@ -48,5 +48,8 @@ __all__ = [
     # Main UI sections
     'show_encode_section', 'show_decode_section', 'show_comparison_section',
     'show_statistics_section', 'show_auth_section', 'show_batch_processing_section',
-    'show_login_form', 'show_register_form', 'apply_dark_theme'
+    'show_pixel_selector_section', 'show_redundancy_section',
+    
+    # Styles
+    'apply_dark_theme'
 ]

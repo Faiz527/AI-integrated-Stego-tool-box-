@@ -9,6 +9,11 @@ import psycopg2
 from psycopg2 import sql
 import os
 import logging
+import secrets
+import hmac
+from datetime import datetime, timedelta
+from collections import defaultdict
+from threading import Lock
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -29,6 +34,102 @@ DB_CONFIG = {
     'password': os.getenv('DB_PASSWORD', 'Password')
 }
 
+# Rate limiting configuration
+RATE_LIMIT_WINDOW = 300  # 5 minutes
+MAX_LOGIN_ATTEMPTS = 5
+_login_attempts = defaultdict(list)
+_rate_limit_lock = Lock()
+
+
+class DatabaseError(Exception):
+    """Generic database error that doesn't expose internal details."""
+    pass
+
+
+class AuthenticationError(Exception):
+    """Authentication-related error."""
+    pass
+
+
+class RateLimitError(Exception):
+    """Rate limit exceeded error."""
+    pass
+
+
+def _hash_password(password: str) -> str:
+    """
+    Hash password using bcrypt.
+    
+    Args:
+        password (str): Plain text password
+    
+    Returns:
+        str: Bcrypt hashed password
+    """
+    try:
+        import bcrypt
+    except ImportError:
+        raise ImportError("bcrypt is required. Install with: pip install bcrypt")
+    
+    salt = bcrypt.gensalt(rounds=12)
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+
+
+def _verify_password(password: str, password_hash: str) -> bool:
+    """
+    Verify password using constant-time comparison via bcrypt.
+    
+    Args:
+        password (str): Plain text password
+        password_hash (str): Bcrypt hashed password
+    
+    Returns:
+        bool: True if password matches
+    """
+    try:
+        import bcrypt
+    except ImportError:
+        raise ImportError("bcrypt is required. Install with: pip install bcrypt")
+    
+    try:
+        return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+    except Exception:
+        return False
+
+
+def _check_rate_limit(identifier: str) -> bool:
+    """
+    Check if identifier has exceeded rate limit.
+    
+    Args:
+        identifier (str): Username or IP to check
+    
+    Returns:
+        bool: True if within rate limit, False if exceeded
+    """
+    with _rate_limit_lock:
+        now = datetime.now()
+        cutoff = now - timedelta(seconds=RATE_LIMIT_WINDOW)
+        
+        # Clean old attempts
+        _login_attempts[identifier] = [
+            t for t in _login_attempts[identifier] if t > cutoff
+        ]
+        
+        return len(_login_attempts[identifier]) < MAX_LOGIN_ATTEMPTS
+
+
+def _record_login_attempt(identifier: str):
+    """Record a login attempt for rate limiting."""
+    with _rate_limit_lock:
+        _login_attempts[identifier].append(datetime.now())
+
+
+def _clear_login_attempts(identifier: str):
+    """Clear login attempts after successful login."""
+    with _rate_limit_lock:
+        _login_attempts[identifier] = []
+
 
 def get_db_connection():
     """
@@ -36,6 +137,9 @@ def get_db_connection():
     
     Returns:
         psycopg2.connection: Database connection object
+    
+    Raises:
+        DatabaseError: If connection fails
     """
     try:
         conn = psycopg2.connect(**DB_CONFIG)
@@ -43,7 +147,7 @@ def get_db_connection():
         return conn
     except psycopg2.Error as e:
         logger.error(f"Database connection failed: {str(e)}")
-        raise
+        raise DatabaseError("Failed to connect to database")
 
 
 def initialize_database():
@@ -55,95 +159,86 @@ def initialize_database():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Check if users table exists
+        # Create users table if not exists
         cursor.execute("""
-            SELECT EXISTS (
-                SELECT 1 FROM information_schema.tables 
-                WHERE table_name = 'users'
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(255) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        logger.info("Users table ready")
         
-        if not cursor.fetchone()[0]:
-            # Create users table
-            cursor.execute("""
-                CREATE TABLE users (
-                    id SERIAL PRIMARY KEY,
-                    username VARCHAR(255) UNIQUE NOT NULL,
-                    password_hash VARCHAR(255) NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            logger.info("Created users table")
-        
-        # Check if operations table exists
+        # Create operations table if not exists
         cursor.execute("""
-            SELECT EXISTS (
-                SELECT 1 FROM information_schema.tables 
-                WHERE table_name = 'operations'
+            CREATE TABLE IF NOT EXISTS operations (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                method VARCHAR(50),
+                input_image VARCHAR(255),
+                output_image VARCHAR(255),
+                message_size INTEGER,
+                encoding_time FLOAT,
+                status VARCHAR(50),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        logger.info("Operations table ready")
         
-        if not cursor.fetchone()[0]:
-            # Create operations table
-            cursor.execute("""
-                CREATE TABLE operations (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    method VARCHAR(50),
-                    input_image VARCHAR(255),
-                    output_image VARCHAR(255),
-                    message_size INTEGER,
-                    encoding_time FLOAT,
-                    status VARCHAR(50),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            logger.info("Created operations table")
-        
-        # Check if activity_log table exists
+        # Create activity_log table if not exists
         cursor.execute("""
-            SELECT EXISTS (
-                SELECT 1 FROM information_schema.tables 
-                WHERE table_name = 'activity_log'
+            CREATE TABLE IF NOT EXISTS activity_log (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                action VARCHAR(255),
+                details TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        
-        if not cursor.fetchone()[0]:
-            # Create activity_log table
-            cursor.execute("""
-                CREATE TABLE activity_log (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    action VARCHAR(255),
-                    details TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            logger.info("Created activity_log table")
+        logger.info("Activity log table ready")
         
         conn.commit()
         cursor.close()
         conn.close()
         logger.info("Database tables initialized successfully")
-        print("Database tables initialized successfully (no existing tables were dropped)")
         
     except psycopg2.Error as e:
         logger.error(f"Database initialization failed: {str(e)}")
         print(f"Database initialization failed: {str(e)}")
 
 
-def add_user(username: str, password_hash: str) -> bool:
+def add_user(username: str, password: str) -> bool:
     """
-    Add a new user to the database.
+    Add a new user to the database with secure password hashing.
     
     Args:
-        username (str): Username
-        password_hash (str): Hashed password
+        username (str): Username (will be converted to lowercase)
+        password (str): Plain text password (will be hashed with bcrypt)
     
     Returns:
         bool: Success status
+    
+    Raises:
+        DatabaseError: If database operation fails
     """
     try:
+        # Normalize username to lowercase
+        username = username.lower().strip()
+        
+        # Validate username
+        if not username or len(username) < 3 or len(username) > 255:
+            logger.warning("Invalid username length")
+            return False
+        
+        # Validate password strength
+        if not password or len(password) < 8:
+            logger.warning("Password too short")
+            return False
+        
+        # Hash password with bcrypt
+        password_hash = _hash_password(password)
+        
         conn = get_db_connection()
         cursor = conn.cursor()
         
@@ -155,43 +250,81 @@ def add_user(username: str, password_hash: str) -> bool:
         conn.commit()
         cursor.close()
         conn.close()
-        logger.info(f"User {username} added successfully")
+        logger.info(f"User added successfully")
         return True
         
-    except psycopg2.Error as e:
-        logger.error(f"Failed to add user: {str(e)}")
+    except psycopg2.IntegrityError:
+        # Username already exists
+        logger.warning("Username already exists")
         return False
+    except DatabaseError:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to add user: {str(e)}")
+        raise DatabaseError("Failed to create user")
 
 
-def verify_user(username: str, password_hash: str) -> bool:
+def verify_user(username: str, password: str) -> dict:
     """
-    Verify user credentials.
+    Verify user credentials with rate limiting and constant-time comparison.
     
     Args:
         username (str): Username
-        password_hash (str): Hashed password
+        password (str): Plain text password
     
     Returns:
-        bool: True if credentials match
+        dict: Dictionary with user_id if credentials match, None otherwise
+              Example: {'user_id': 1, 'username': 'testuser'}
+    
+    Raises:
+        RateLimitError: If too many failed attempts
+        DatabaseError: If database operation fails
     """
+    # Normalize username
+    username = username.lower().strip()
+    
+    # Check rate limit
+    if not _check_rate_limit(username):
+        logger.warning(f"Rate limit exceeded for user: {username}")
+        raise RateLimitError("Too many login attempts. Please try again later.")
+    
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
+        # Get user's password hash
         cursor.execute(
-            "SELECT id FROM users WHERE username = %s AND password_hash = %s",
-            (username, password_hash)
+            "SELECT id, username, password_hash FROM users WHERE username = %s",
+            (username,)
         )
         
         result = cursor.fetchone()
         cursor.close()
         conn.close()
         
-        return result is not None
+        if result:
+            user_id, db_username, password_hash = result
+            
+            # Use bcrypt's constant-time comparison
+            if _verify_password(password, password_hash):
+                _clear_login_attempts(username)
+                logger.info(f"User verified successfully")
+                return {'user_id': user_id, 'username': db_username}
         
-    except psycopg2.Error as e:
+        # Record failed attempt (same response whether user exists or not)
+        _record_login_attempt(username)
+        logger.warning("Invalid credentials")
+        return None
+        
+    except RateLimitError:
+        raise
+    except DatabaseError:
+        raise
+    except Exception as e:
         logger.error(f"User verification failed: {str(e)}")
-        return False
+        # Don't expose internal errors - return generic failure
+        _record_login_attempt(username)
+        return None
 
 
 def log_operation(user_id: int, method: str, input_image: str, output_image: str,
@@ -207,6 +340,9 @@ def log_operation(user_id: int, method: str, input_image: str, output_image: str
         message_size (int): Size of embedded message
         encoding_time (float): Time taken for encoding
         status (str): Operation status
+    
+    Raises:
+        DatabaseError: If logging fails
     """
     try:
         conn = get_db_connection()
@@ -223,8 +359,11 @@ def log_operation(user_id: int, method: str, input_image: str, output_image: str
         conn.close()
         logger.info(f"Operation logged for user {user_id}")
         
+    except DatabaseError:
+        raise
     except psycopg2.Error as e:
         logger.error(f"Failed to log operation: {str(e)}")
+        raise DatabaseError("Failed to log operation")
 
 
 def log_activity(user_id: int, action: str, details: str = None):
@@ -235,6 +374,9 @@ def log_activity(user_id: int, action: str, details: str = None):
         user_id (int): User ID
         action (str): Action description
         details (str): Additional details
+    
+    Raises:
+        DatabaseError: If logging fails
     """
     try:
         conn = get_db_connection()
@@ -250,8 +392,11 @@ def log_activity(user_id: int, action: str, details: str = None):
         conn.close()
         logger.info(f"Activity logged for user {user_id}")
         
+    except DatabaseError:
+        raise
     except psycopg2.Error as e:
         logger.error(f"Failed to log activity: {str(e)}")
+        raise DatabaseError("Failed to log activity")
 
 
 def get_user_operations(user_id: int, limit: int = 10) -> list:
@@ -283,7 +428,7 @@ def get_user_operations(user_id: int, limit: int = 10) -> list:
         
         return operations
         
-    except psycopg2.Error as e:
+    except Exception as e:
         logger.error(f"Failed to retrieve operations: {str(e)}")
         return []
 
@@ -325,7 +470,7 @@ def get_statistics() -> dict:
             'avg_encoding_time': float(avg_time) if avg_time else 0
         }
         
-    except psycopg2.Error as e:
+    except Exception as e:
         logger.error(f"Failed to get statistics: {str(e)}")
         return {}
 
@@ -372,7 +517,7 @@ def get_operation_stats(days: int = 7) -> dict:
             ]
         }
         
-    except psycopg2.Error as e:
+    except Exception as e:
         logger.error(f"Failed to get operation stats: {str(e)}")
         return {'stats': []}
 
@@ -400,7 +545,7 @@ def get_method_distribution() -> dict:
         
         return {method: count for method, count in results}
         
-    except psycopg2.Error as e:
+    except Exception as e:
         logger.error(f"Failed to get method distribution: {str(e)}")
         return {}
 
@@ -416,12 +561,18 @@ def get_encode_decode_stats() -> dict:
         conn = get_db_connection()
         cursor = conn.cursor()
         
+        # Fixed: use output_image to distinguish encode vs decode
+        # Encode operations have a non-empty output_image
+        # Decode operations have empty or NULL output_image
         cursor.execute("""
             SELECT 
-                CASE WHEN output_image IS NOT NULL THEN 'Encode' ELSE 'Decode' END as type,
+                CASE 
+                    WHEN output_image IS NOT NULL AND output_image != '' THEN 'Encode' 
+                    ELSE 'Decode' 
+                END as op_type,
                 COUNT(*) as count
             FROM operations
-            GROUP BY type
+            GROUP BY op_type
         """)
         
         results = dict(cursor.fetchall())
@@ -430,7 +581,7 @@ def get_encode_decode_stats() -> dict:
         
         return results
         
-    except psycopg2.Error as e:
+    except Exception as e:
         logger.error(f"Failed to get encode/decode stats: {str(e)}")
         return {}
 
@@ -472,7 +623,7 @@ def get_activity_log(user_id: int = None, limit: int = 50) -> list:
         
         return results
         
-    except psycopg2.Error as e:
+    except Exception as e:
         logger.error(f"Failed to get activity log: {str(e)}")
         return []
 
@@ -507,7 +658,7 @@ def get_timeline_data(days: int = 7) -> list:
         
         return [{'date': str(row[0]), 'count': row[1]} for row in results]
         
-    except psycopg2.Error as e:
+    except Exception as e:
         logger.error(f"Failed to get timeline data: {str(e)}")
         return []
 
@@ -542,7 +693,7 @@ def get_size_distribution() -> dict:
         
         return {row[0]: row[1] for row in results}
         
-    except psycopg2.Error as e:
+    except Exception as e:
         logger.error(f"Failed to get size distribution: {str(e)}")
         return {}
 
@@ -576,7 +727,7 @@ def search_activity_log(search_term: str, limit: int = 50) -> list:
         
         return results
         
-    except psycopg2.Error as e:
+    except Exception as e:
         logger.error(f"Failed to search activity log: {str(e)}")
         return []
 
@@ -591,7 +742,7 @@ def get_user_count() -> int:
         cursor.close()
         conn.close()
         return count
-    except psycopg2.Error as e:
+    except Exception as e:
         logger.error(f"Failed to get user count: {str(e)}")
         return 0
 
@@ -606,7 +757,7 @@ def get_operation_count() -> int:
         cursor.close()
         conn.close()
         return count
-    except psycopg2.Error as e:
+    except Exception as e:
         logger.error(f"Failed to get operation count: {str(e)}")
         return 0
 
@@ -638,7 +789,7 @@ def get_recent_activity(limit: int = 100) -> list:
         
         return results
         
-    except psycopg2.Error as e:
+    except Exception as e:
         logger.error(f"Failed to get recent activity: {str(e)}")
         return []
 
@@ -658,7 +809,7 @@ def get_user_stats(username: str) -> list:
         cursor = conn.cursor()
         
         # First get user ID
-        cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
+        cursor.execute("SELECT id FROM users WHERE username = %s", (username.lower(),))
         user_result = cursor.fetchone()
         
         if not user_result:
@@ -682,7 +833,7 @@ def get_user_stats(username: str) -> list:
         
         return results if results else []
         
-    except psycopg2.Error as e:
+    except Exception as e:
         logger.error(f"Failed to get user stats: {str(e)}")
         return []
 
@@ -701,13 +852,13 @@ def get_user_id(username: str) -> int:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
+        cursor.execute("SELECT id FROM users WHERE username = %s", (username.lower(),))
         result = cursor.fetchone()
         cursor.close()
         conn.close()
         
         return result[0] if result else None
         
-    except psycopg2.Error as e:
+    except Exception as e:
         logger.error(f"Failed to get user ID: {str(e)}")
         return None
