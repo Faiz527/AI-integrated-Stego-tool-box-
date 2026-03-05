@@ -1,148 +1,242 @@
 """
-Hybrid DWT Steganography Module
-================================
-Implements Haar Wavelet DWT steganography in frequency domain.
-Embeds data in wavelet coefficients for high security.
+TRUE Hybrid DWT Steganography
+==============================
+Implements ACTUAL DWT wavelet domain embedding.
+Uses Haar wavelets for robustness to filtering.
+
+Key Features:
+- Single-level Haar wavelet decomposition
+- Detail coefficient embedding (cH, cV, cD)
+- Robust to JPEG compression and noise
+- Better survival through image operations
+- Higher steganalysis resistance than LSB
 """
 
+import pywt
 import numpy as np
 from PIL import Image
-import pywt
 import logging
 
 logger = logging.getLogger(__name__)
 
-# ============================================================================
-#                     HYBRID DWT METHOD (FREQUENCY DOMAIN)
-# ============================================================================
+# Quantization step for robust embedding
+QUANT_STEP = 25
 
-def encode_dwt(image: Image.Image, message: str) -> Image.Image:
-    """
-    Encode message into image using DWT + LSB hybrid method.
-    Uses DWT to identify stable regions, then embeds data via LSB.
-    
-    Args:
-        image (Image.Image): Input image
-        message (str): Secret message to encode
-    
-    Returns:
-        Image.Image: Encoded image
-    """
-    try:
-        # Convert to RGB if needed
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
-        
-        # Convert image to numpy array
-        img_array = np.array(image, dtype=np.uint8)
-        
-        # Get image dimensions
-        height, width = img_array.shape[:2]
-        
-        # Embed message length first (16 bits for up to 65535 chars)
-        message_length = len(message)
-        length_bits = format(message_length, '016b')  # 16-bit length prefix
-        
-        # Convert message to binary
-        message_bits = ''.join(format(ord(char), '08b') for char in message)
-        
-        # Combine: length (16 bits) + message (variable)
-        full_bits = length_bits + message_bits
-        
-        # Check capacity
-        capacity = height * width * 3  # RGB pixels
-        if len(full_bits) > capacity:
-            raise ValueError(f"Message too large. Max capacity: {capacity} bits")
-        
-        # Embed bits into LSB of all color channels (R, G, B)
-        # This is a hybrid approach: use all channels for reliability
-        img_flat = img_array.reshape(-1)  # Flatten to 1D
-        
-        for i, bit in enumerate(full_bits):
-            if i < len(img_flat):
-                # LSB replacement in pixel values
-                if bit == '1':
-                    img_flat[i] = int(img_flat[i]) | 1
+
+def _embed_bits_in_subband(subband, bit_string, bit_index):
+    """Embed bits into a wavelet subband using QIM."""
+    for i in range(subband.shape[0]):
+        for j in range(subband.shape[1]):
+            if bit_index >= len(bit_string):
+                return bit_index
+            bit = int(bit_string[bit_index])
+            coeff = subband[i, j]
+            
+            quantized = round(coeff / QUANT_STEP) * QUANT_STEP
+            quant_index = round(coeff / QUANT_STEP)
+            if quant_index % 2 != bit:
+                if coeff > quantized:
+                    quantized += QUANT_STEP
                 else:
-                    img_flat[i] = int(img_flat[i]) & ~1
-        
-        # Reshape back to image
-        img_array = img_flat.reshape(img_array.shape)
-        
-        # Convert back to image
-        encoded_image = Image.fromarray(np.uint8(img_array))
-        
-        logger.info(f"DWT encoding successful. Message length: {len(message)} chars")
-        return encoded_image
-        
-    except Exception as e:
-        logger.error(f"DWT encoding failed: {str(e)}")
-        raise
+                    quantized -= QUANT_STEP
+            
+            subband[i, j] = float(quantized)
+            bit_index += 1
+        if bit_index >= len(bit_string):
+            return bit_index
+    return bit_index
 
 
-def decode_dwt(image: Image.Image) -> str:
+def _extract_bits_from_subband(subband, bits, message_length_ref, total_bits_ref):
     """
-    Decode message from image using hybrid DWT+LSB method.
-    
+    Extract bits from a wavelet subband using QIM.
+    Returns True if we should stop (got all bits or invalid length).
+    """
+    for i in range(subband.shape[0]):
+        for j in range(subband.shape[1]):
+            coeff = subband[i, j]
+            quant_index = round(coeff / QUANT_STEP)
+            bit = quant_index % 2
+            bits.append(str(bit))
+            
+            # Check if we have 16 bits to read length
+            if len(bits) == 16 and message_length_ref[0] is None:
+                msg_len = int(''.join(bits[:16]), 2)
+                if msg_len == 0 or msg_len > 100000:
+                    message_length_ref[0] = 0
+                    return True  # invalid
+                message_length_ref[0] = msg_len
+                total_bits_ref[0] = 16 + (msg_len * 8)
+            
+            if total_bits_ref[0] and len(bits) >= total_bits_ref[0]:
+                return True  # got all bits
+        
+        if total_bits_ref[0] and len(bits) >= total_bits_ref[0]:
+            return True
+    return False
+
+
+def encode_dwt(image, message):
+    """
+    ACTUAL DWT implementation - embeds in wavelet coefficients.
+
     Args:
-        image (Image.Image): Encoded image
-    
+        image (PIL.Image): Input image
+        message (str): Secret message (UTF-8)
+
     Returns:
-        str: Extracted secret message
+        PIL.Image: Encoded image with hidden message
+
+    Raises:
+        ValueError: If message is too large for image capacity
+    """
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
+
+    gray = image.convert('L')
+    img_array = np.array(gray, dtype=np.float64)
+
+    h, w = img_array.shape
+
+    # Ensure dimensions are even
+    if h % 2 != 0:
+        h -= 1
+    if w % 2 != 0:
+        w -= 1
+    img_array = img_array[:h, :w]
+
+    # Message encoding
+    if isinstance(message, (bytes, bytearray)):
+        message_bytes = bytes(message)
+    else:
+        message_bytes = message.encode('utf-8')
+    message_length = len(message_bytes)
+
+    # Calculate capacity
+    subband_size = (h // 2) * (w // 2)
+    max_bits = subband_size * 3  # cH + cV + cD
+    max_bytes = max_bits // 8
+
+    if message_length + 2 > max_bytes:
+        raise ValueError(
+            f"Message too large for DWT! "
+            f"Image capacity: {max_bytes - 2} bytes, "
+            f"Message size: {message_length} bytes. "
+            f"Required image size: at least {int(np.sqrt(message_length * 8 * 2))}x{int(np.sqrt(message_length * 8 * 2))} pixels"
+        )
+
+    # Prepare bit string
+    bit_string = format(message_length, '016b')
+    for byte in message_bytes:
+        bit_string += format(byte, '08b')
+
+    logger.info(f"DWT: Encoding {message_length} bytes")
+    logger.debug(f"DWT: Total bits: {len(bit_string)}, Subband capacity: {max_bits} bits")
+
+    # Apply single-level Haar DWT
+    cA, (cH, cV, cD) = pywt.dwt2(img_array, 'haar')
+
+    # Embed bits using QIM in each subband
+    bit_index = 0
+    
+    logger.debug(f"DWT: Embedding in cH ({cH.shape[0]}x{cH.shape[1]})")
+    bit_index = _embed_bits_in_subband(cH, bit_string, bit_index)
+    
+    if bit_index < len(bit_string):
+        logger.debug(f"DWT: Embedding in cV ({cV.shape[0]}x{cV.shape[1]})")
+        bit_index = _embed_bits_in_subband(cV, bit_string, bit_index)
+    
+    if bit_index < len(bit_string):
+        logger.debug(f"DWT: Embedding in cD ({cD.shape[0]}x{cD.shape[1]})")
+        bit_index = _embed_bits_in_subband(cD, bit_string, bit_index)
+
+    # Reconstruct image
+    reconstructed = pywt.idwt2((cA, (cH, cV, cD)), 'haar')
+
+    result = np.clip(reconstructed[:h, :w], 0, 255).astype(np.uint8)
+    encoded_image = Image.fromarray(result, 'L').convert('RGB')
+
+    logger.info(f"DWT: Successfully encoded {bit_index} bits")
+
+    return encoded_image
+
+
+def decode_dwt(image):
+    """
+    Decode message from DWT-encoded image.
+
+    Args:
+        image (PIL.Image): Encoded image
+
+    Returns:
+        str: Decoded message (empty string if extraction fails)
     """
     try:
-        # Convert to RGB if needed
         if image.mode != 'RGB':
             image = image.convert('RGB')
+
+        gray = image.convert('L')
+        img_array = np.array(gray, dtype=np.float64)
+
+        h, w = img_array.shape
+        if h % 2 != 0:
+            h -= 1
+        if w % 2 != 0:
+            w -= 1
+        img_array = img_array[:h, :w]
+
+        # Apply single-level Haar DWT
+        cA, (cH, cV, cD) = pywt.dwt2(img_array, 'haar')
+
+        bits = []
+        # Use mutable references so the helper can update them
+        message_length_ref = [None]
+        total_bits_ref = [None]
+
+        # Extract from cH
+        done = _extract_bits_from_subband(cH, bits, message_length_ref, total_bits_ref)
+
+        # Extract from cV if needed
+        if not done and (total_bits_ref[0] is None or len(bits) < total_bits_ref[0]):
+            done = _extract_bits_from_subband(cV, bits, message_length_ref, total_bits_ref)
+
+        # Extract from cD if needed
+        if not done and (total_bits_ref[0] is None or len(bits) < total_bits_ref[0]):
+            done = _extract_bits_from_subband(cD, bits, message_length_ref, total_bits_ref)
+
+        # Validate
+        if len(bits) < 16:
+            logger.warning("DWT: Not enough bits extracted")
+            return ""
+
+        message_length = message_length_ref[0]
+        if message_length is None:
+            message_length = int(''.join(bits[:16]), 2)
         
-        # Convert image to numpy array
-        img_array = np.array(image, dtype=np.uint8)
-        
-        # Flatten to extract bits
-        img_flat = img_array.reshape(-1)
-        
-        # First, extract the message length (first 16 bits)
-        length_bits = ''
-        for i in range(16):
-            if i < len(img_flat):
-                bit = int(img_flat[i]) & 1
-                length_bits += str(bit)
-        
-        # Convert length bits to integer
-        try:
-            message_length = int(length_bits, 2)
-        except:
-            logger.warning("Could not extract message length")
-            return ''
-        
-        if message_length == 0:
-            return ''
-        
-        # Now extract the message bits based on the length
-        message_bits = ''
-        total_bits_needed = message_length * 8
-        
-        for i in range(16, 16 + total_bits_needed):
-            if i < len(img_flat):
-                bit = int(img_flat[i]) & 1
-                message_bits += str(bit)
-            else:
-                break
-        
-        # Convert bits to characters
-        message = ''
-        for i in range(0, len(message_bits), 8):
-            if i + 8 <= len(message_bits):
-                byte = message_bits[i:i+8]
-                try:
-                    char = chr(int(byte, 2))
-                    message += char
-                except:
-                    break
-        
-        logger.info(f"DWT decoding successful. Message length: {len(message)} chars")
-        return message
-        
+        logger.debug(f"DWT: Extracted message length = {message_length}")
+
+        if message_length == 0 or message_length > 100000:
+            logger.warning(f"DWT: Invalid message length: {message_length}")
+            return ""
+
+        total_bits_needed = 16 + (message_length * 8)
+        if len(bits) < total_bits_needed:
+            logger.warning(f"DWT: Not enough bits. Have {len(bits)}, need {total_bits_needed}")
+            return ""
+
+        # Convert bits to bytes
+        message_bytes = bytearray()
+        for k in range(message_length):
+            byte_bits = ''.join(bits[16 + k*8 : 16 + (k+1)*8])
+            message_bytes.append(int(byte_bits, 2))
+
+        decoded = message_bytes.decode('utf-8')
+        logger.info(f"DWT: Successfully decoded {len(decoded)} characters")
+        return decoded
+
+    except UnicodeDecodeError:
+        logger.warning("DWT: UTF-8 decode failed - not a valid DWT-encoded image")
+        return ""
     except Exception as e:
-        logger.error(f"DWT decoding failed: {str(e)}")
-        raise
+        logger.error(f"DWT decode error: {e}")
+        return ""

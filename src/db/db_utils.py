@@ -154,96 +154,58 @@ def initialize_database():
     """
     Initialize database tables if they don't exist.
     Creates users, operations, and activity_log tables only if missing.
-    
-    Raises:
-        DatabaseError: If initialization fails
     """
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Check if users table exists
+        # Create users table if not exists
         cursor.execute("""
-            SELECT EXISTS (
-                SELECT 1 FROM information_schema.tables 
-                WHERE table_name = 'users'
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(255) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        logger.info("Users table ready")
         
-        if not cursor.fetchone()[0]:
-            # Create users table with proper constraints
-            cursor.execute("""
-                CREATE TABLE users (
-                    id SERIAL PRIMARY KEY,
-                    username VARCHAR(255) UNIQUE NOT NULL,
-                    password_hash VARCHAR(255) NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    CONSTRAINT username_lowercase CHECK (username = LOWER(username))
-                )
-            """)
-            # Create index for faster lookups
-            cursor.execute("CREATE INDEX idx_users_username ON users(username)")
-            logger.info("Created users table")
-        
-        # Check if operations table exists
+        # Create operations table if not exists
         cursor.execute("""
-            SELECT EXISTS (
-                SELECT 1 FROM information_schema.tables 
-                WHERE table_name = 'operations'
+            CREATE TABLE IF NOT EXISTS operations (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                method VARCHAR(50),
+                input_image VARCHAR(255),
+                output_image VARCHAR(255),
+                message_size INTEGER,
+                encoding_time FLOAT,
+                status VARCHAR(50),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        logger.info("Operations table ready")
         
-        if not cursor.fetchone()[0]:
-            # Create operations table
-            cursor.execute("""
-                CREATE TABLE operations (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    method VARCHAR(50),
-                    input_image VARCHAR(255),
-                    output_image VARCHAR(255),
-                    message_size INTEGER,
-                    encoding_time FLOAT,
-                    status VARCHAR(50),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            cursor.execute("CREATE INDEX idx_operations_user_id ON operations(user_id)")
-            logger.info("Created operations table")
-        
-        # Check if activity_log table exists
+        # Create activity_log table if not exists
         cursor.execute("""
-            SELECT EXISTS (
-                SELECT 1 FROM information_schema.tables 
-                WHERE table_name = 'activity_log'
+            CREATE TABLE IF NOT EXISTS activity_log (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                action VARCHAR(255),
+                details TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        
-        if not cursor.fetchone()[0]:
-            # Create activity_log table
-            cursor.execute("""
-                CREATE TABLE activity_log (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    action VARCHAR(255),
-                    details TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            cursor.execute("CREATE INDEX idx_activity_log_user_id ON activity_log(user_id)")
-            logger.info("Created activity_log table")
+        logger.info("Activity log table ready")
         
         conn.commit()
         cursor.close()
         conn.close()
         logger.info("Database tables initialized successfully")
-        print("Database tables initialized successfully (no existing tables were dropped)")
         
-    except DatabaseError:
-        raise
     except psycopg2.Error as e:
         logger.error(f"Database initialization failed: {str(e)}")
-        raise DatabaseError("Database initialization failed")
+        print(f"Database initialization failed: {str(e)}")
 
 
 def add_user(username: str, password: str) -> bool:
@@ -599,12 +561,18 @@ def get_encode_decode_stats() -> dict:
         conn = get_db_connection()
         cursor = conn.cursor()
         
+        # Fixed: use output_image to distinguish encode vs decode
+        # Encode operations have a non-empty output_image
+        # Decode operations have empty or NULL output_image
         cursor.execute("""
             SELECT 
-                CASE WHEN output_image IS NOT NULL THEN 'Encode' ELSE 'Decode' END as type,
+                CASE 
+                    WHEN output_image IS NOT NULL AND output_image != '' THEN 'Encode' 
+                    ELSE 'Decode' 
+                END as op_type,
                 COUNT(*) as count
             FROM operations
-            GROUP BY type
+            GROUP BY op_type
         """)
         
         results = dict(cursor.fetchall())

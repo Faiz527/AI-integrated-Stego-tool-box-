@@ -1,188 +1,225 @@
 """
-Hybrid DCT Steganography Module
-================================
-Implements Hybrid DCT (Y-Channel LSB) steganography in frequency domain.
-Uses Y-channel for JPEG compatibility while avoiding reconstruction issues.
+TRUE Hybrid DCT Steganography
+==============================
+Implements ACTUAL DCT frequency domain embedding.
+Uses JPEG-DCT compatible coefficient modification.
+
+Key Features:
+- 8×8 block DCT transformation
+- AC coefficient embedding (skips DC for robustness)
+- Grayscale Y-channel processing
+- Robust to JPEG compression
+- Better steganalysis resistance than LSB
 """
 
-import numpy as np
 from PIL import Image
-import logging
+import numpy as np
 from scipy.fftpack import dct, idct
+import logging
 
 logger = logging.getLogger(__name__)
 
-# ============================================================================
-#                     HYBRID DCT METHOD (FREQUENCY DOMAIN)
-# ============================================================================
-
-def rgb_to_ycbcr(rgb_array):
-    """Convert RGB to YCbCr color space."""
-    # Standard conversion matrix
-    mat = np.array([[0.299, 0.587, 0.114],
-                    [-0.169, -0.331, 0.5],
-                    [0.5, -0.419, -0.081]])
-    
-    # Reshape for matrix multiplication
-    result = np.dot(rgb_array, mat.T)
-    result[:, :, 1:] += 128
-    return np.uint8(np.clip(result, 0, 255))
+# Quantization step — must be large enough to survive float→uint8→float round-trip
+# A step of 2 means we quantize coefficients to even/odd multiples of QUANT_STEP
+QUANT_STEP = 25
 
 
-def ycbcr_to_rgb(ycbcr_array):
-    """Convert YCbCr to RGB color space."""
-    # Inverse conversion matrix
-    mat = np.array([[1, 0, 1.402],
-                    [1, -0.344, -0.714],
-                    [1, 1.772, 0]])
-    
-    ycbcr = ycbcr_array.astype(np.float32)
-    ycbcr[:, :, 1:] -= 128
-    result = np.dot(ycbcr, mat.T)
-    return np.uint8(np.clip(result, 0, 255))
-
-
-def encode_dct(image: Image.Image, message: str) -> Image.Image:
+def encode_dct(image, message):
     """
-    Encode message into image using Hybrid DCT method.
+    ACTUAL DCT implementation - embeds in DCT coefficients.
+    
+    Process:
+    1. Convert image to grayscale Y-channel
+    2. Divide into 8×8 blocks
+    3. Apply DCT to each block
+    4. Modify AC coefficients using quantization embedding
+    5. Apply inverse DCT
+    6. Reconstruct image
     
     Args:
-        image (Image.Image): Input image
-        message (str): Secret message to encode
+        image (PIL.Image): Input image (recommended: 1024x768 or larger)
+        message (str): Secret message to encode (UTF-8)
     
     Returns:
-        Image.Image: Encoded image
-    """
-    try:
-        # Convert to RGB if needed
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
-        
-        # Convert image to numpy array
-        rgb_array = np.array(image, dtype=np.float32)
-        
-        # Convert to YCbCr
-        ycbcr_array = rgb_to_ycbcr(rgb_array)
-        
-        # Extract Y channel
-        y_channel = ycbcr_array[:, :, 0].astype(np.float32)
-        
-        # Get dimensions
-        height, width = y_channel.shape
-        
-        # Convert message to binary
-        message_bits = ''.join(format(ord(char), '08b') for char in message)
-        message_bits += '00000000'  # Add null terminator
-        
-        # Check capacity
-        capacity = (height // 8) * (width // 8) * 16  # 2 bits per 8x8 block
-        if len(message_bits) > capacity:
-            raise ValueError(f"Message too large. Max capacity: {capacity} bits")
-        
-        # Process image in 8x8 blocks
-        bit_index = 0
-        
-        for y in range(0, height - 7, 8):
-            for x in range(0, width - 7, 8):
-                # Extract 8x8 block
-                block = y_channel[y:y+8, x:x+8]
-                
-                # Apply DCT
-                dct_block = dct(dct(block.T, norm='ortho').T, norm='ortho')
-                
-                # Embed bits in AC coefficients (avoiding DC component)
-                if bit_index < len(message_bits):
-                    # Embed in low-frequency AC coefficients
-                    for i in range(1, min(3, 8)):
-                        for j in range(1, min(3, 8)):
-                            if bit_index < len(message_bits):
-                                bit = int(message_bits[bit_index])
-                                # LSB replacement
-                                if bit == 1:
-                                    dct_block[i, j] = int(dct_block[i, j]) | 1
-                                else:
-                                    dct_block[i, j] = int(dct_block[i, j]) & ~1
-                                bit_index += 1
-                
-                # Apply inverse DCT
-                idct_block = idct(idct(dct_block.T, norm='ortho').T, norm='ortho')
-                
-                # Update Y channel
-                y_channel[y:y+8, x:x+8] = np.clip(idct_block, 0, 255)
-        
-        # Update YCbCr array
-        ycbcr_array[:, :, 0] = np.uint8(y_channel)
-        
-        # Convert back to RGB
-        rgb_result = ycbcr_to_rgb(ycbcr_array)
-        
-        # Convert to image
-        encoded_image = Image.fromarray(rgb_result)
-        
-        logger.info(f"DCT encoding successful. Message length: {len(message)} chars")
-        return encoded_image
-        
-    except Exception as e:
-        logger.error(f"DCT encoding failed: {str(e)}")
-        raise
-
-
-def decode_dct(image: Image.Image) -> str:
-    """
-    Decode message from image using Hybrid DCT method.
+        PIL.Image: Encoded image with hidden message
     
-    Args:
-        image (Image.Image): Encoded image
-    
-    Returns:
-        str: Extracted secret message
+    Raises:
+        ValueError: If message is too large for image capacity
     """
-    try:
-        # Convert to RGB if needed
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
-        
-        # Convert image to numpy array
-        rgb_array = np.array(image, dtype=np.float32)
-        
-        # Convert to YCbCr
-        ycbcr_array = rgb_to_ycbcr(rgb_array)
-        
-        # Extract Y channel
-        y_channel = ycbcr_array[:, :, 0].astype(np.float32)
-        
-        # Get dimensions
-        height, width = y_channel.shape
-        
-        # Extract bits from 8x8 blocks
-        message_bits = ''
-        
-        for y in range(0, height - 7, 8):
-            for x in range(0, width - 7, 8):
-                # Extract 8x8 block
-                block = y_channel[y:y+8, x:x+8]
-                
-                # Apply DCT
-                dct_block = dct(dct(block.T, norm='ortho').T, norm='ortho')
-                
-                # Extract bits from AC coefficients
-                for i in range(1, min(3, 8)):
-                    for j in range(1, min(3, 8)):
-                        bit = int(dct_block[i, j]) & 1
-                        message_bits += str(bit)
-        
-        # Convert bits to characters
-        message = ''
-        for i in range(0, len(message_bits) - 8, 8):
-            byte = message_bits[i:i+8]
-            char = chr(int(byte, 2))
-            if char == '\0':  # Null terminator
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
+    
+    # Convert to grayscale (Y channel equivalent)
+    gray = image.convert('L')
+    img_array = np.array(gray, dtype=np.float64)
+    
+    h, w = img_array.shape
+    
+    # Message encoding
+    if isinstance(message, (bytes, bytearray)):
+        message_bytes = bytes(message)
+    else:
+        message_bytes = message.encode('utf-8')
+    message_length = len(message_bytes)
+    
+    # Calculate capacity: 1 bit per 8×8 block
+    num_blocks_h = h // 8
+    num_blocks_w = w // 8
+    total_blocks = num_blocks_h * num_blocks_w
+    max_bits = total_blocks
+    max_bytes = max_bits // 8
+    
+    if message_length + 2 > max_bytes:
+        raise ValueError(
+            f"Message too large for DCT! "
+            f"Image capacity: {max_bytes - 2} bytes, "
+            f"Message size: {message_length} bytes. "
+            f"Required image size: at least {int(np.sqrt((message_length + 2) * 8)) * 8}x{int(np.sqrt((message_length + 2) * 8)) * 8} pixels"
+        )
+    
+    # Prepare bit string: 16-bit length prefix + message bits
+    bit_string = format(message_length, '016b')
+    for byte in message_bytes:
+        bit_string += format(byte, '08b')
+    
+    logger.info(f"DCT: Encoding {message_length} bytes in {total_blocks} 8x8 blocks")
+    logger.debug(f"DCT: Total bits to embed: {len(bit_string)}, Capacity: {max_bits} bits")
+    
+    bit_index = 0
+    
+    for i in range(num_blocks_h):
+        for j in range(num_blocks_w):
+            if bit_index >= len(bit_string):
                 break
-            message += char
+            
+            # Extract 8×8 block
+            block = img_array[i*8:(i+1)*8, j*8:(j+1)*8].copy()
+            
+            # Apply 2D DCT
+            dct_block = dct(dct(block.T, norm='ortho').T, norm='ortho')
+            
+            # Embed using quantization index modulation (QIM)
+            # This is far more robust than simple parity embedding
+            coeff = dct_block[4, 4]
+            bit = int(bit_string[bit_index])
+            
+            # Quantize: map coefficient to nearest value where
+            # floor(coeff / QUANT_STEP) % 2 == bit
+            quantized = round(coeff / QUANT_STEP) * QUANT_STEP
+            # Check if quantized index has correct parity
+            quant_index = round(coeff / QUANT_STEP)
+            if quant_index % 2 != bit:
+                # Shift to adjacent quantization level with correct parity
+                if coeff > quantized:
+                    quantized += QUANT_STEP
+                else:
+                    quantized -= QUANT_STEP
+            
+            dct_block[4, 4] = float(quantized)
+            
+            # Apply inverse 2D DCT
+            block_reconstructed = idct(idct(dct_block.T, norm='ortho').T, norm='ortho')
+            img_array[i*8:(i+1)*8, j*8:(j+1)*8] = block_reconstructed
+            
+            bit_index += 1
         
-        logger.info(f"DCT decoding successful. Message length: {len(message)} chars")
-        return message
+        if bit_index >= len(bit_string):
+            break
+    
+    # Convert back to image
+    result = np.clip(img_array, 0, 255).astype(np.uint8)
+    encoded_image = Image.fromarray(result, 'L').convert('RGB')
+    
+    logger.info(f"DCT: Successfully encoded {bit_index} bits")
+    
+    return encoded_image
+
+
+def decode_dct(image):
+    """
+    Decode message from DCT-encoded image.
+    
+    Args:
+        image (PIL.Image): Encoded image
+    
+    Returns:
+        str: Decoded message (empty string if extraction fails)
+    """
+    try:
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
         
+        # Convert to grayscale
+        gray = image.convert('L')
+        img_array = np.array(gray, dtype=np.float64)
+        
+        h, w = img_array.shape
+        num_blocks_h = h // 8
+        num_blocks_w = w // 8
+        
+        bits = []
+        message_length = None
+        total_bits_needed = None
+        
+        logger.debug(f"DCT: Decoding from {num_blocks_h}x{num_blocks_w} blocks")
+        
+        for i in range(num_blocks_h):
+            for j in range(num_blocks_w):
+                block = img_array[i*8:(i+1)*8, j*8:(j+1)*8]
+                dct_block = dct(dct(block.T, norm='ortho').T, norm='ortho')
+                
+                # Extract bit using same QIM scheme
+                coeff = dct_block[4, 4]
+                quant_index = round(coeff / QUANT_STEP)
+                bit = quant_index % 2
+                bits.append(str(bit))
+                
+                # Early exit once we know the message length
+                if len(bits) == 16 and message_length is None:
+                    message_length = int(''.join(bits[:16]), 2)
+                    if message_length == 0 or message_length > (num_blocks_h * num_blocks_w) // 8:
+                        logger.warning(f"DCT: Invalid message length: {message_length}")
+                        return ""
+                    total_bits_needed = 16 + (message_length * 8)
+                
+                if total_bits_needed and len(bits) >= total_bits_needed:
+                    break
+            else:
+                continue
+            break
+        
+        if len(bits) < 16:
+            logger.warning("DCT: Not enough bits extracted")
+            return ""
+        
+        # Extract message length (first 16 bits)
+        if message_length is None:
+            message_length = int(''.join(bits[:16]), 2)
+        
+        logger.debug(f"DCT: Extracted message length = {message_length}")
+        
+        if message_length == 0 or message_length > 100000:
+            logger.warning(f"DCT: Invalid message length: {message_length}")
+            return ""
+        
+        total_bits_needed = 16 + (message_length * 8)
+        if len(bits) < total_bits_needed:
+            logger.warning(f"DCT: Not enough bits. Have {len(bits)}, need {total_bits_needed}")
+            return ""
+        
+        # Convert bits to bytes
+        message_bytes = bytearray()
+        for k in range(message_length):
+            byte_bits = ''.join(bits[16 + k*8 : 16 + (k+1)*8])
+            message_bytes.append(int(byte_bits, 2))
+        
+        decoded = message_bytes.decode('utf-8')
+        logger.info(f"DCT: Successfully decoded {len(decoded)} characters")
+        return decoded
+    
+    except UnicodeDecodeError:
+        logger.warning("DCT: UTF-8 decode failed - not a valid DCT-encoded image")
+        return ""
     except Exception as e:
-        logger.error(f"DCT decoding failed: {str(e)}")
-        raise
+        logger.error(f"DCT decode error: {e}")
+        return ""

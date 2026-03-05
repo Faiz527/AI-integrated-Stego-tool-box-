@@ -1,6 +1,6 @@
 """
-Image Steganography Application - Core Package
-===============================================
+AI-Integrated Stego Tool Box - Core Package
+=============================================
 Main package initialization for the stego application modules.
 """
 
