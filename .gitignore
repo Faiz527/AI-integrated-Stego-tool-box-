@@ -154,6 +154,39 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
+
+# ============================================================================
+# MACHINE LEARNING MODELS
+# ============================================================================
+# Exclude temporary/runtime pickle files (but keep pre-trained models)
+*.pkl.backup
+*.pkl.old
+*_temp.pkl
+
+# Exclude checkpoints and temporary training files
+checkpoints/
+training_logs/
+*.pt
+*.pth
+
+# ============================================================================
+# DATA & OUTPUTS (Keep existing)
+# ============================================================================
+data/input/
+data/output/
+data/temp/
+htmlcov/
+logs/
+
+# ============================================================================
+# OTHER PYTHON/ENVIRONMENT (Keep existing)
+# ============================================================================
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.local
 "@ | Out-File -Encoding UTF8 .gitignore
 
 # Verify the file
