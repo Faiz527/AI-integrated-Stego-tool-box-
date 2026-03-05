@@ -732,6 +732,51 @@ mypy src/
 
 ---
 
+
+### 📦 Module 6: Error Correction Code (ECC)
+
+**Status:** ✅ Implemented & Integrated
+
+**Purpose:**
+Protect hidden messages from corruption caused by JPEG compression, image noise, or transmission errors using Reed-Solomon error correction codes.
+
+**Features:**
+- **Reed-Solomon Encoding:** Add redundancy bytes (8-128 configurable) to messages
+- **Automatic Recovery:** Recover original message from corrupted data (up to nsym/2 byte errors)
+- **Capacity Checker:** Visual warnings if message + ECC overhead exceeds image capacity
+- **ECC Testing:** Interactive test interface with corruption simulation
+- **Capacity Calculator:** Plan image/message sizes before encoding
+
+**How to Use:**
+
+**Encoding with ECC:**
+1. Enable "🛡️ Enable Error Correction (ECC)" checkbox in Encode tab
+2. Set ECC Strength (parity bytes): 
+   - 8-16 bytes: Light protection (~0.3-0.6% overhead)
+   - 32 bytes: **Recommended** (~1.2% overhead, recovers ~16 byte errors)
+   - 64-128 bytes: Heavy protection (~2.5-5% overhead)
+3. Capacity warning auto-appears if message doesn't fit
+4. Click "Encode" — ECC is applied before embedding
+
+**Decoding with ECC Recovery:**
+1. During decode, enable "🔧 Try to recover from errors" checkbox
+2. Set expected ECC strength (must match encoding setting)
+3. Click "Extract Message"
+4. System automatically detects and corrects errors if present
+
+**Configuration:**
+```python
+from stegotool.modules.module6_redundancy import add_redundancy, recover_redundancy
+
+# Encoding
+message_bytes = b"Secret message"
+with_ecc = add_redundancy(message_bytes, nsym=32)  # Add 32 parity bytes
+
+# Decoding
+recovered = recover_redundancy(with_ecc, nsym=32)  # Auto-corrects errors
+```
+
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -762,6 +807,6 @@ For issues, questions, or suggestions:
 
 ---
 
-**Last Updated:** March 4, 2026
+**Last Updated:** March 5, 2026
 **Status:** ✅ Production Ready
 **Test Coverage:** 92%+
