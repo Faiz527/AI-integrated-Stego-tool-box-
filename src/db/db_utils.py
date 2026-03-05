@@ -16,6 +16,7 @@ from collections import defaultdict
 from threading import Lock
 from dotenv import load_dotenv
 from pathlib import Path
+import streamlit as st
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -25,14 +26,29 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 load_dotenv(dotenv_path=str(PROJECT_ROOT / '.env'))
 
-# Database configuration
-DB_CONFIG = {
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'port': os.getenv('DB_PORT', '5432'),
-    'database': os.getenv('DB_NAME', 'stegnography'),
-    'user': os.getenv('DB_USER', 'postgres'),
-    'password': os.getenv('DB_PASSWORD', 'Password')
-}
+# Database configuration - support both local (.env) and cloud (st.secrets)
+def get_db_config():
+    """Get database config from Streamlit secrets (cloud) or .env (local)"""
+    try:
+        # Try Streamlit secrets first (used on Streamlit Cloud)
+        return {
+            'host': st.secrets.get('DB_HOST', os.getenv('DB_HOST', 'localhost')),
+            'port': st.secrets.get('DB_PORT', os.getenv('DB_PORT', '5432')),
+            'database': st.secrets.get('DB_NAME', os.getenv('DB_NAME', 'stegnography')),
+            'user': st.secrets.get('DB_USER', os.getenv('DB_USER', 'postgres')),
+            'password': st.secrets.get('DB_PASSWORD', os.getenv('DB_PASSWORD', 'Password'))
+        }
+    except:
+        # Fallback to environment variables
+        return {
+            'host': os.getenv('DB_HOST', 'localhost'),
+            'port': os.getenv('DB_PORT', '5432'),
+            'database': os.getenv('DB_NAME', 'stegnography'),
+            'user': os.getenv('DB_USER', 'postgres'),
+            'password': os.getenv('DB_PASSWORD', 'Password')
+        }
+
+DB_CONFIG = get_db_config()
 
 # Rate limiting configuration
 RATE_LIMIT_WINDOW = 300  # 5 minutes
