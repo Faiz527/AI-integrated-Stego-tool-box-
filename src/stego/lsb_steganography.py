@@ -65,7 +65,11 @@ def encode_image(img, secret_text, filter_type="None"):
     max_bytes = img_array.size // 8  # Total bits / 8
     
     # Encode message as UTF-8 bytes
-    secret_bytes = secret_text.encode('utf-8')
+    # Accept both str and bytes/bytearray input
+    if isinstance(secret_text, (bytes, bytearray)):
+        secret_bytes = bytes(secret_text)
+    else:
+        secret_bytes = secret_text.encode('utf-8')
     message_length = len(secret_bytes)
     
     # Check capacity: 2 bytes for length + message

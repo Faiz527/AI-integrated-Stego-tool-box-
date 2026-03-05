@@ -176,12 +176,14 @@ def get_user_detailed_stats(user_id: int) -> dict:
         cursor = conn.cursor()
         
         # Get comprehensive stats in one query
+        # Fixed: status matching — we now log 'success' and 'failed'
+        # Encode = has output_image, Decode = no output_image
         cursor.execute("""
             SELECT 
                 COUNT(*) as total_ops,
                 COUNT(CASE WHEN status = 'success' THEN 1 END) as successful_ops,
-                COUNT(CASE WHEN status = 'encode' OR output_image IS NOT NULL THEN 1 END) as encode_count,
-                COUNT(CASE WHEN status = 'decode' OR output_image IS NULL THEN 1 END) as decode_count,
+                COUNT(CASE WHEN output_image IS NOT NULL AND output_image != '' THEN 1 END) as encode_count,
+                COUNT(CASE WHEN output_image IS NULL OR output_image = '' THEN 1 END) as decode_count,
                 COALESCE(AVG(encoding_time), 0) as avg_time,
                 COALESCE(SUM(message_size), 0) as total_bytes,
                 MAX(created_at) as last_activity,
@@ -204,7 +206,7 @@ def get_user_detailed_stats(user_id: int) -> dict:
         
         method_row = cursor.fetchone()
         
-        # Get activity streak (consecutive days)
+        # Get activity streak (consecutive days up to today)
         cursor.execute("""
             WITH daily_activity AS (
                 SELECT DISTINCT DATE(created_at) as activity_date
@@ -212,15 +214,16 @@ def get_user_detailed_stats(user_id: int) -> dict:
                 WHERE user_id = %s
                 ORDER BY activity_date DESC
             ),
-            streaks AS (
+            numbered AS (
                 SELECT 
                     activity_date,
-                    activity_date - (ROW_NUMBER() OVER (ORDER BY activity_date DESC))::int as streak_group
+                    ROW_NUMBER() OVER (ORDER BY activity_date DESC) as rn
                 FROM daily_activity
             )
             SELECT COUNT(*) as streak
-            FROM streaks
-            WHERE streak_group = (SELECT streak_group FROM streaks WHERE activity_date = CURRENT_DATE)
+            FROM numbered
+            WHERE activity_date >= CURRENT_DATE - (rn - 1)::int
+              AND activity_date <= CURRENT_DATE
         """, (user_id,))
         
         streak_row = cursor.fetchone()
@@ -247,20 +250,26 @@ def get_user_detailed_stats(user_id: int) -> dict:
             elif total_bytes >= 1024:
                 total_data = f"{total_bytes / 1024:.1f} KB"
             else:
-                total_data = f"{total_bytes} B"
+                total_data = f"{int(total_bytes)} B"
+            
+            # Calculate days active
+            if last_activity and first_activity:
+                days_active = (last_activity - first_activity).days + 1
+            else:
+                days_active = 0
             
             return {
                 'total_operations': total_ops,
                 'encode_count': encode_count,
                 'decode_count': decode_count,
                 'success_rate': round(success_rate, 1),
-                'avg_encoding_time': round(avg_time, 2),
+                'avg_encoding_time': round(float(avg_time), 2),
                 'total_data_processed': total_data,
                 'favorite_method': method_row[0] if method_row else 'N/A',
                 'activity_streak': streak_row[0] if streak_row else 0,
                 'last_activity': last_activity,
                 'first_activity': first_activity,
-                'days_active': (last_activity - first_activity).days + 1 if last_activity and first_activity else 0
+                'days_active': days_active
             }
         
         return {}

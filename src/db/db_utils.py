@@ -561,12 +561,18 @@ def get_encode_decode_stats() -> dict:
         conn = get_db_connection()
         cursor = conn.cursor()
         
+        # Fixed: use output_image to distinguish encode vs decode
+        # Encode operations have a non-empty output_image
+        # Decode operations have empty or NULL output_image
         cursor.execute("""
             SELECT 
-                CASE WHEN output_image IS NOT NULL THEN 'Encode' ELSE 'Decode' END as type,
+                CASE 
+                    WHEN output_image IS NOT NULL AND output_image != '' THEN 'Encode' 
+                    ELSE 'Decode' 
+                END as op_type,
                 COUNT(*) as count
             FROM operations
-            GROUP BY type
+            GROUP BY op_type
         """)
         
         results = dict(cursor.fetchall())
