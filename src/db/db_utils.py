@@ -177,60 +177,72 @@ def get_db_connection():
 
 def initialize_database():
     """
-    Initialize database tables if they don't exist.
-    Creates users, operations, and activity_log tables only if missing.
+    Initialize PostgreSQL database with required tables.
+    Creates tables if they don't exist.
     """
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Create users table if not exists
+        logger.info("Initializing database schema...")
+        
+        # ============================================================================
+        # CREATE USERS TABLE
+        # ============================================================================
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 username VARCHAR(255) UNIQUE NOT NULL,
                 password_hash VARCHAR(255) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
+            );
         """)
         logger.info("Users table ready")
         
-        # Create operations table if not exists
+        # ============================================================================
+        # CREATE OPERATIONS TABLE
+        # ============================================================================
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS operations (
                 id SERIAL PRIMARY KEY,
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 method VARCHAR(50),
-                input_image VARCHAR(255),
-                output_image VARCHAR(255),
-                message_size INTEGER,
-                encoding_time FLOAT,
-                status VARCHAR(50),
+                input_image VARCHAR(500),
+                output_image VARCHAR(500),
+                message_length INT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
+            );
         """)
         logger.info("Operations table ready")
         
-        # Create activity_log table if not exists
+        # ============================================================================
+        # CREATE ACTIVITY_LOG TABLE
+        # ============================================================================
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS activity_log (
                 id SERIAL PRIMARY KEY,
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 action VARCHAR(255),
                 details TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
         """)
-        logger.info("Activity log table ready")
+        logger.info("Activity_log table ready")
         
+        # Commit all changes
         conn.commit()
         cursor.close()
         conn.close()
-        logger.info("Database tables initialized successfully")
+        
+        logger.info("✓ Database initialization complete!")
+        return True
         
     except psycopg2.Error as e:
         logger.error(f"Database initialization failed: {str(e)}")
-        print(f"Database initialization failed: {str(e)}")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error during database init: {str(e)}")
+        return False
 
 
 def add_user(username: str, password: str) -> bool:
