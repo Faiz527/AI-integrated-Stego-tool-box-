@@ -387,7 +387,7 @@ def show_encode_section():
 
 def _perform_encoding(image_file, message, method, use_encryption, encryption_password,
                      use_ecc=False, ecc_strength=32):
-    """Perform the encoding operation with optional ECC."""
+    """Perform the encoding operation with CORRECT pipeline order: ECC → Encryption → Stego"""
     try:
         progress = st.progress(0)
         status = st.empty()
@@ -406,28 +406,33 @@ def _perform_encoding(image_file, message, method, use_encryption, encryption_pa
         status.text("Preparing message...")
         progress.progress(25)
         
-        # Start with original message as string
         message_to_embed = message
         
-        # Step 1: Encrypt if needed (produces string output)
-        if use_encryption and encryption_password:
-            message_to_embed = encrypt_message(message, encryption_password)
-            # encrypt_message returns a string
-        
-        # Step 2: Add ECC if enabled (produces bytes/bytearray output)
+        # ┌─────────────────────────────────────────────────────────────┐
+        # │ STEP 1: ADD ECC FIRST (before encryption)                  │
+        # │ This protects the ORIGINAL message                         │
+        # └─────────────────────────────────────────────────────────────┘
         if use_ecc:
             status.text(f"Adding error correction ({ecc_strength} parity bytes)...")
-            progress.progress(40)
+            progress.progress(30)
             
             try:
                 from stegotool.modules.module6_redundancy.ui_section import encode_message_with_ecc
                 
-                message_to_embed = encode_message_with_ecc(
+                # ECC expects string input, returns bytes
+                ecc_result = encode_message_with_ecc(
                     message_to_embed,
                     use_ecc=True,
                     nsym=ecc_strength
                 )
-                # message_to_embed is now bytes or bytearray
+                # ✅ FIX: Convert bytearray to string using latin-1 (lossless)
+                # latin-1 preserves all byte values (0-255) in character codes
+                if isinstance(ecc_result, (bytes, bytearray)):
+                    message_to_embed = bytes(ecc_result).decode('latin-1')
+                else:
+                    message_to_embed = ecc_result
+                
+                logger.debug(f"ECC applied: {len(message)} → {len(ecc_result)} bytes")
                 
             except ImportError:
                 logger.warning("ECC module not available, skipping ECC")
@@ -435,10 +440,31 @@ def _perform_encoding(image_file, message, method, use_encryption, encryption_pa
                 show_error(f"ECC encoding failed: {str(e)}")
                 return
         
+        # ┌─────────────────────────────────────────────────────────────┐
+        # │ STEP 2: ENCRYPT (after ECC)                                │
+        # │ Now message_to_embed is a string (safe for encryption)    │
+        # └─────────────────────────────────────────────────────────────┘
+        if use_encryption and encryption_password:
+            status.text("Encrypting message...")
+            progress.progress(40)
+            
+            try:
+                # message_to_embed is now definitely a string (from latin-1 decode)
+                message_to_embed = encrypt_message(message_to_embed, encryption_password)
+                logger.debug(f"Encryption applied, encrypted length: {len(message_to_embed)}")
+                
+            except Exception as e:
+                show_error(f"Encryption failed: {str(e)}")
+                return
+        
         status.text(f"Encoding with {method}...")
         progress.progress(60)
         
-        # Stego functions now accept both str and bytes
+        # ┌─────────────────────────────────────────────────────────────┐
+        # │ STEP 3: EMBED IN IMAGE                                     │
+        # │ Stego functions expect string input                        │
+        # └─────────────────────────────────────────────────────────────┘
+        
         if method == "LSB":
             encoded_image = lsb_encode(original_image, message_to_embed)
         elif method == "Hybrid DCT":
@@ -458,6 +484,7 @@ def _perform_encoding(image_file, message, method, use_encryption, encryption_pa
         st.session_state.last_encode_encrypted = use_encryption
         st.session_state.last_encode_ecc = use_ecc
         st.session_state.last_encode_nsym = ecc_strength
+        st.session_state.last_encode_pipeline_order = "ECC → Encryption → Stego"
         
         progress.progress(100)
         status.empty()
@@ -465,10 +492,11 @@ def _perform_encoding(image_file, message, method, use_encryption, encryption_pa
         
         # Log activity
         ecc_info = f" (ECC: {ecc_strength} bytes)" if use_ecc else ""
+        enc_info = " + Encryption" if use_encryption else ""
         if hasattr(st.session_state, 'user_id') and st.session_state.user_id:
-            log_activity(st.session_state.user_id, "ENCODE", f"Encoded with {method}{ecc_info}")
+            log_activity(st.session_state.user_id, "ENCODE", f"Encoded with {method}{ecc_info}{enc_info}")
         
-        show_success(f"Message encoded successfully! (ECC: {'ON' if use_ecc else 'OFF'})")
+        show_success(f"✅ Message encoded successfully!\nPipeline: ECC → Encryption → {method}")
         
     except Exception as e:
         show_error(f"Encoding failed: {str(e)}")
@@ -872,7 +900,7 @@ def show_decode_section():
 
 def _perform_decoding(image_file, decode_method, use_encryption, decryption_password,
                      use_ecc_recovery=False, ecc_strength=32):
-    """Perform decoding with optional ECC recovery."""
+    """Perform decoding with CORRECT pipeline order: Stego Extraction → Decryption → ECC Recovery"""
     try:
         progress = st.progress(0, text="Loading image...")
         
@@ -882,9 +910,11 @@ def _perform_decoding(image_file, decode_method, use_encryption, decryption_pass
         
         progress.progress(30, text=f"Decoding with {decode_method}...")
         
+        # ┌─────────────────────────────────────────────────────────────┐
+        # │ STEP 1: EXTRACT FROM IMAGE                                 │
+        # └─────────────────────────────────────────────────────────────┘
         decoded_message = ""
         
-        # Decode using the selected method
         if decode_method == "LSB":
             decoded_message = lsb_decode(image)
         elif decode_method == "Hybrid DCT":
@@ -892,7 +922,7 @@ def _perform_decoding(image_file, decode_method, use_encryption, decryption_pass
         elif decode_method == "Hybrid DWT":
             decoded_message = dwt_decode(image)
         
-        progress.progress(70, text="Validating message...")
+        progress.progress(50, text="Validating message...")
         
         if not decoded_message or not decoded_message.strip():
             progress.empty()
@@ -902,54 +932,58 @@ def _perform_decoding(image_file, decode_method, use_encryption, decryption_pass
                 "- Wrong decoding method selected\n"
                 "- Image was not encoded with this tool\n"
                 "- Image was compressed or modified after encoding\n\n"
-                "💡 **Tip:** Try a different method or enable ECC recovery."
+                "💡 **Tip:** Try a different method or check if ECC recovery is needed."
             )
             return
         
-        progress.progress(85, text="Processing recovery...")
+        progress.progress(65, text="Processing decryption & ECC recovery...")
         
-        # Attempt ECC recovery if enabled
+        # ┌─────────────────────────────────────────────────────────────┐
+        # │ STEP 2: DECRYPT (if encrypted)                             │
+        # │ Decryption must happen BEFORE ECC recovery                 │
+        # └─────────────────────────────────────────────────────────────┘
+        if use_encryption:
+            if not decryption_password:
+                progress.empty()
+                show_error("Please enter the decryption password.")
+                return
+            
+            try:
+                decoded_message = decrypt_message(decoded_message, decryption_password)
+                logger.info("Message decrypted successfully")
+            except ValueError as e:
+                progress.empty()
+                show_error(f"Decryption failed. Wrong password? Error: {str(e)}")
+                return
+        
+        # ┌─────────────────────────────────────────────────────────────┐
+        # │ STEP 3: ECC RECOVERY (if enabled)                          │
+        # │ Recover original message from ECC-protected payload        │
+        # └─────────────────────────────────────────────────────────────┘
         if use_ecc_recovery:
             try:
                 from stegotool.modules.module6_redundancy.ui_section import decode_message_with_ecc_recovery
+                
+                logger.info(f"Attempting ECC recovery with nsym={ecc_strength}")
                 
                 recovered_msg, status = decode_message_with_ecc_recovery(
                     decoded_message,
                     use_ecc_recovery=True,
                     nsym=ecc_strength,
-                    use_encryption=use_encryption,
-                    decryption_password=decryption_password
+                    use_encryption=False,  # Already decrypted above!
+                    decryption_password=None
                 )
                 decoded_message = recovered_msg
                 
                 if status == 'ecc_recovered':
-                    show_info(f"✅ ECC recovery successful! (~{ecc_strength//2} byte errors corrected)")
+                    show_info(f"✅ ECC recovery successful! Corrected ~{ecc_strength//2} byte errors")
+                    logger.info(f"ECC recovered message, status={status}")
             
             except ImportError:
                 logger.warning("ECC recovery module not available")
             except ValueError as e:
-                # Fall back to normal decryption
-                logger.warning(f"ECC recovery failed, trying normal decryption: {e}")
-                if use_encryption and decryption_password:
-                    try:
-                        decoded_message = decrypt_message(decoded_message, decryption_password)
-                    except Exception as decrypt_err:
-                        progress.empty()
-                        show_error(f"Decryption failed: {str(decrypt_err)}")
-                        return
-        else:
-            # Normal decryption without ECC
-            if use_encryption:
-                if not decryption_password:
-                    progress.empty()
-                    show_error("Please enter the decryption password.")
-                    return
-                try:
-                    decoded_message = decrypt_message(decoded_message, decryption_password)
-                except Exception as e:
-                    progress.empty()
-                    show_error(f"Decryption failed. Wrong password? Error: {str(e)}")
-                    return
+                logger.warning(f"ECC recovery failed: {e}, continuing with extracted message")
+                # Don't fail — use the extracted message anyway
         
         progress.progress(100, text="Done!")
         progress.empty()
@@ -959,19 +993,21 @@ def _perform_decoding(image_file, decode_method, use_encryption, decryption_pass
             'message': decoded_message,
             'method': decode_method,
             'ecc_recovery_used': use_ecc_recovery,
+            'encryption_used': use_encryption,
             'success': True
         }
         
         recovery_info = " (with ECC recovery)" if use_ecc_recovery else ""
-        show_success(f"✅ Message extracted successfully using **{decode_method}** method{recovery_info}!")
+        encryption_info = " (decrypted)" if use_encryption else ""
+        show_success(f"✅ Message extracted successfully using **{decode_method}** method{encryption_info}{recovery_info}!")
         
         # Log activity
         try:
             if st.session_state.get('logged_in') and st.session_state.get('user_id'):
                 log_activity(
                     st.session_state['user_id'],
-                    "decode",
-                    f"Decoded using {decode_method}{recovery_info}"
+                    "DECODE",
+                    f"Decoded using {decode_method}{encryption_info}{recovery_info}"
                 )
         except Exception:
             pass

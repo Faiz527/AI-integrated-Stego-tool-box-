@@ -4,12 +4,24 @@ TRUE Hybrid DCT Steganography
 Implements ACTUAL DCT frequency domain embedding.
 Uses JPEG-DCT compatible coefficient modification.
 
+⚠️ IMPORTANT NOTES FOR ENCRYPTION + ECC:
+─────────────────────────────────────────
+- DCT uses quantization which introduces controlled bit-flip errors
+- These errors are correctable by ECC (~16 bytes for nsym=32)
+- PIPELINE: Use ECC BEFORE encryption: Message → ECC → Encrypt → DCT
+- This allows ECC to correct DCT quantization errors on recovery
+- Reverse: DCT Extract → Decrypt → ECC Recover
+
+DO NOT DO: Message → Encrypt → ECC → DCT
+           (ECC can't help if encrypted data has high entropy + DCT errors)
+
 Key Features:
 - 8×8 block DCT transformation
 - AC coefficient embedding (skips DC for robustness)
 - Grayscale Y-channel processing
 - Robust to JPEG compression
 - Better steganalysis resistance than LSB
+- Works well with ECC pre-processing
 """
 
 from PIL import Image

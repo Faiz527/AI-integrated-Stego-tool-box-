@@ -308,12 +308,15 @@ def decode_message_with_ecc_recovery(decoded_data: str, use_ecc_recovery: bool,
     """
     Decode message and attempt ECC recovery if enabled.
     
+    ⚠️ IMPORTANT: This function assumes data is ALREADY DECRYPTED!
+    Pipeline order: Stego Extract → Decrypt → ECC Recovery
+    
     Args:
-        decoded_data: raw extracted data from image
+        decoded_data: raw extracted data from image (MUST be decrypted already)
         use_ecc_recovery: whether to attempt ECC recovery
         nsym: expected parity bytes
-        use_encryption: whether data is encrypted
-        decryption_password: password if encrypted
+        use_encryption: DEPRECATED — kept for backward compat, should always be False
+        decryption_password: DEPRECATED — kept for backward compat, should always be None
     
     Returns:
         (recovered_message: str, status: str)
@@ -321,6 +324,12 @@ def decode_message_with_ecc_recovery(decoded_data: str, use_ecc_recovery: bool,
     
     Raises:
         ValueError if critical error
+    
+    Example:
+        # CORRECT USAGE:
+        extracted = dct_decode(image)  # Get encrypted message
+        decrypted = decrypt_message(extracted, password)  # Decrypt FIRST
+        final, status = decode_message_with_ecc_recovery(decrypted, use_ecc_recovery=True, nsym=32)
     """
     try:
         # First, try to recover from ECC if enabled
@@ -338,34 +347,15 @@ def decode_message_with_ecc_recovery(decoded_data: str, use_ecc_recovery: bool,
                 recovered = recover_redundancy(decoded_bytes, nsym=nsym)
                 logger.info(f"ECC recovery successful: {len(decoded_bytes)} → {len(recovered)} bytes")
                 
-                # Now handle decryption if needed
-                if use_encryption and decryption_password:
-                    from src.encryption.encryption import decrypt_message
-                    try:
-                        final_message = decrypt_message(recovered.decode('utf-8'), decryption_password)
-                        return final_message, 'ecc_recovered'
-                    except Exception as e:
-                        logger.error(f"Decryption after ECC failed: {e}")
-                        return recovered.decode('utf-8', errors='replace'), 'ecc_recovered'
-                else:
-                    return recovered.decode('utf-8'), 'ecc_recovered'
+                return recovered.decode('utf-8'), 'ecc_recovered'
             
             except ValueError as e:
                 logger.warning(f"ECC recovery failed: {e}")
-                # Fall through to try without ECC
+                # Fall through to return as-is
                 pass
         
-        # If ECC recovery failed or not enabled, try direct decryption
-        if use_encryption and decryption_password:
-            from src.encryption.encryption import decrypt_message
-            try:
-                final_message = decrypt_message(decoded_data, decryption_password)
-                return final_message, 'success'
-            except Exception as e:
-                logger.error(f"Decryption failed: {e}")
-                raise ValueError(f"Decryption failed. Wrong password? {str(e)}")
-        else:
-            return decoded_data, 'success'
+        # If ECC recovery failed or not enabled, return decoded data as-is
+        return decoded_data, 'success'
     
     except Exception as e:
         logger.error(f"Message decoding failed: {e}")
