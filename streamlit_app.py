@@ -6,10 +6,18 @@ Main entry point - orchestrates all UI components.
 """
 from pathlib import Path
 import sys
+import logging
 
 # Configure base path
 BASE_PATH = Path(__file__).parent.absolute()
 sys.path.insert(0, str(BASE_PATH))
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 import streamlit as st
 from src.db.db_utils import (
@@ -73,8 +81,40 @@ if "current_page" not in st.session_state:
 
 try:
     initialize_database()
+    logger.info("✅ Database initialized successfully")
 except Exception as e:
-    st.error(f"Database initialization error: {str(e)}")
+    st.error("❌ Database Initialization Failed")
+    st.error(f"Error: {str(e)}")
+    st.info("""
+    **Troubleshooting Steps:**
+    
+    1. **Verify PostgreSQL is running:**
+       ```
+       Get-Service postgresql-x64-*
+       ```
+    
+    2. **Create/recreate database:**
+       ```
+       python -m src.db.create_db
+       ```
+       or
+       ```
+       python create_db.py
+       ```
+    
+    3. **Initialize tables manually:**
+       ```
+       python -c "from src.db.db_utils import initialize_database; initialize_database()"
+       ```
+    
+    4. **Verify .env file** has correct credentials:
+       - DB_HOST=localhost
+       - DB_PORT=5432
+       - DB_NAME=stegnography
+       - DB_USER=postgres
+       - DB_PASSWORD=your_password
+    """)
+    st.stop()
 
 # ============================================================================
 #                           NAVIGATION CONFIG

@@ -1,812 +1,496 @@
-# AI-Integrated Steganography Toolbox
+# Image Steganography Application 
 
-> **Advanced steganography toolkit with AI-powered steganalysis, multiple embedding methods, and military-grade encryption**
+A comprehensive web-based image steganography application built with Streamlit that supports multiple steganography methods (LSB, Hybrid DCT, Hybrid DWT) with encryption capabilities, batch processing, and detailed analytics.
 
-[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-178%20Passed-brightgreen.svg)](#-testing)
-[![Code Quality](https://img.shields.io/badge/Code%20Quality-High-blue.svg)](#-testing)
+## 🎯 Features
 
----
+### Steganography Methods
+- **LSB (Least Significant Bit)**: Spatial domain steganography with fast processing
+- **Hybrid DCT (Discrete Cosine Transform)**: Frequency domain method using Y-channel
+- **Hybrid DWT (Discrete Wavelet Transform)**: Wavelet-based encoding using Haar wavelets
 
-## 📚 Table of Contents
+### Core Functionality
+- ✅ **Message Encoding**: Hide secret messages in images using three different methods
+- ✅ **Message Decoding**: Extract hidden messages from encoded images
+- ✅ **Encryption**: Message protection with SHA-256 key derivation
+- ✅ **Method Comparison**: Side-by-side comparison of all three steganography methods
+- ✅ **Batch Processing**: Encode/decode multiple images efficiently
+- ✅ **Real-time Analytics**: Track operations and view detailed statistics
 
-- [Features](#features)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Architecture](#architecture)
-- [Steganography Methods](#steganography-methods)
-- [Encryption](#encryption)
-- [Testing](#-testing)
-- [Usage Examples](#usage-examples)
-- [Project Structure](#project-structure)
-- [Contributing](#contributing)
-- [License](#license)
+### Analytics Dashboard
+- 📊 **Operation Timeline**: Track operations over the last 7 days
+- 📈 **Method Distribution**: Pie chart showing usage of LSB, DCT, and DWT
+- 📉 **Encode vs Decode**: Bar chart comparing encode/decode operations
+- 🔐 **Encryption Usage**: Statistics on encrypted vs unencrypted messages
+- 💾 **Data Size Distribution**: Visualization of operation data sizes
+- 📋 **Activity Log**: Real-time log of recent user operations
 
----
-
-## ✨ Features
-
-### 🔐 Multiple Steganography Methods
-
-| Method | Capacity | Resilience | Speed | Use Case |
-|--------|----------|-----------|-------|----------|
-| **LSB** | Very High (~30KB) | Low (spatial) | ⚡ Very Fast | Maximum capacity needed |
-| **DCT** | Medium (~1.5KB) | High (JPEG) | ⏱️ Moderate | JPEG distribution |
-| **DWT** | Medium (~2KB) | High (noise) | ⏱️ Moderate | Robust against distortion |
-
-### 🛡️ Security Features
-
-- ✅ **AES-256-CBC Encryption** - Military-grade message encryption
-- ✅ **Multiple Steganography Methods** - Flexibility in embedding choice
-- ✅ **Image Filtering Support** - Blur, Sharpen, Grayscale preprocessing
-- ✅ **Robust Extraction** - Recover messages from processed images
-- ✅ **Mode Conversion** - Support for RGB, Grayscale, RGBA images
-
-### 🎯 Advanced Capabilities
-
-- 📊 Steganalysis detection framework
-- 🤖 AI-powered feature extraction
-- 💾 Database integration for user management
-- 📝 Operation logging and auditing
-- 🔍 Message integrity verification
-
-### 🧪 Comprehensive Testing
-
-- ✅ **178 Unit + Integration Tests** - Full coverage
-- ✅ **84 Unit Tests** - Core functionality
-- ✅ **22 Integration Tests** - End-to-end workflows
-- ✅ **38 Fixture Tests** - Test infrastructure
-- ✅ **34+ Database Tests** - Persistence layer
-- ✅ **High Code Coverage** - Production-ready quality
+### User Management
+- User authentication with SHA-256 password hashing
+- Per-user operation tracking
+- Activity logging and statistics
+- Session management
 
 ---
 
-## 📦 Installation
+## 🛠️ Installation
 
 ### Prerequisites
+- **Python 3.8+** (Python 3.10+ recommended)
+- **PostgreSQL 9.1+** (for database operations)
+- **pip** (Python package manager)
 
-- **Python 3.9+**
-- **pip** or **conda**
-- **MySQL/MariaDB** (optional, for database features)
+### Quick Start
 
-### Step 1: Clone Repository
-
+1. **Clone or Download the Project**
 ```bash
-git clone https://github.com/Faiz527/AI-integrated-Stego-tool-box-.git
-cd AI-integrated-Stego-tool-box-
+git clone https://github.com/yourusername/image-steganography.git
+cd ITR
 ```
 
-### Step 2: Create Virtual Environment
-
+2. **Create Virtual Environment**
 ```bash
-# Windows
-python -m venv venv
-venv\Scripts\activate
-
-# macOS/Linux
-python3 -m venv venv
-source venv/bin/activate
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+# or
+source .venv/bin/activate  # macOS/Linux
 ```
 
-### Step 3: Install Dependencies
-
+3. **Install Dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
-### Step 4: Initialize Database (Optional)
+4. **Configure Environment Variables**
 
+Create `.env` file in project root:
+```bash
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=stegnography
+DB_USER=postgres
+DB_PASSWORD=your_postgres_password
+```
+
+5. **Create PostgreSQL Database**
+```bash
+# Option 1: From project root (using convenience wrapper)
+python create_db.py
+
+# Option 2: Using Python module
+python -m src.db.create_db
+```
+
+6. **Initialize Database Tables**
 ```bash
 python -c "from src.db.db_utils import initialize_database; initialize_database()"
 ```
 
----
-
-## 🚀 Quick Start
-
-### Basic Encoding (LSB)
-
-```python
-from PIL import Image
-from src.stego.lsb_steganography import encode_image, decode_image
-
-# Load image
-img = Image.open('image.png')
-
-# Encode message
-secret_msg = "This is secret!"
-encoded_img = encode_image(img, secret_msg, filter_type="None")
-encoded_img.save('encoded.png')
-
-# Decode message
-decoded_msg = decode_image(encoded_img)
-print(f"Retrieved: {decoded_msg}")  # Output: This is secret!
-```
-
-### With Encryption (AES-256)
-
-```python
-from PIL import Image
-from src.stego.lsb_steganography import encode_image, decode_image
-from src.encryption.encryption import encrypt_message, decrypt_message
-
-# Load image
-img = Image.open('image.png')
-
-# Encrypt message
-secret_msg = "Highly confidential data"
-password = "MySecurePassword123"
-encrypted = encrypt_message(secret_msg, password)
-
-# Embed encrypted message
-encoded_img = encode_image(img, encrypted, filter_type="None")
-encoded_img.save('secure_encoded.png')
-
-# Extract and decrypt
-extracted = decode_image(encoded_img)
-decrypted = decrypt_message(extracted, password)
-print(f"Decrypted: {decrypted}")  # Output: Highly confidential data
-```
-
-### Using DCT Method (JPEG-Resilient)
-
-```python
-from PIL import Image
-from src.stego.dct_steganography import encode_dct, decode_dct
-
-img = Image.open('image.png')
-msg = "Secret message"
-
-# Encode using DCT
-encoded = encode_dct(img, msg)
-encoded.save('encoded_dct.jpg')
-
-# Decode from JPEG
-decoded = decode_dct(encoded)
-print(f"Message: {decoded}")
-```
-
-### Using DWT Method (Noise-Resilient)
-
-```python
-from PIL import Image
-from src.stego.dwt_steganography import encode_dwt, decode_dwt
-
-img = Image.open('image.png')
-msg = "Robustness test"
-
-# Encode using DWT
-encoded = encode_dwt(img, msg)
-encoded.save('encoded_dwt.png')
-
-# Decode
-decoded = decode_dwt(encoded)
-print(f"Message: {decoded}")
+7. **Test Database Connection**
+```bash
+python test_db.py
 ```
 
 ---
 
-## 🏗️ Architecture
+## 🚀 Running the Application
 
-### System Design
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                  User Interface Layer                   │
-│              (CLI / Web / Desktop Apps)                 │
-└─────────────────┬───────────────────────────────────────┘
-                  │
-┌─────────────────▼───────────────────────────────────────┐
-│            Application Logic Layer                      │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
-│  │  LSB Method  │  │  DCT Method  │  │  DWT Method  │  │
-│  └──────────────┘  └──────────────┘  └──────────────┘  │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │    Encryption Module (AES-256-CBC)              │   │
-│  └──────────────────────────────────────────────────┘   │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │    Image Processing & Filtering                 │   │
-│  └──────────────────────────────────────────────────┘   │
-└─────────────────┬───────────────────────────────────────┘
-                  │
-┌─────────────────▼───────────────────────────────────────┐
-│              Data Layer                                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
-│  │   Database   │  │  File System │  │  Image I/O   │  │
-│  │  (MySQL)     │  │  (PNG/JPEG)  │  │  (PIL)       │  │
-│  └──────────────┘  └──────────────┘  └──────────────┘  │
-└─────────────────────────────────────────────────────────┘
+Start the Streamlit app:
+```bash
+streamlit run streamlit_app.py
 ```
 
-### Directory Structure
+The app will open at: `http://localhost:8501`
+
+---
+
+## 📁 Project Structure
 
 ```
-AIR-integrated-Stego-tool-box-/
+ITR/
+├── .env                          # Environment variables (PostgreSQL credentials)
+├── .gitignore                    # Git ignore rules
+├── .streamlit/
+│   ├── config.toml              # Streamlit configuration
+│   └── secrets.toml             # Streamlit secrets
+├── requirements.txt             # Python dependencies
+├── README.md                    # This file
+├── streamlit_app.py            # Main Streamlit application
+├── create_db.py                # Database creation script (convenience wrapper)
+├── test_db.py                  # Database connection test
+├── test_steganography.py       # Steganography methods test
 ├── src/
-│   ├── stego/
-│   │   ├── lsb_steganography.py      # LSB embedding (spatial domain)
-│   │   ├── dct_steganography.py      # DCT embedding (frequency domain)
-│   │   ├── dwt_steganography.py      # DWT embedding (wavelet domain)
-│   │   └── __init__.py
-│   ├── encryption/
-│   │   ├── encryption.py             # AES-256-CBC encryption
-│   │   └── __init__.py
+│   ├── __init__.py             # Main package initialization
 │   ├── db/
-│   │   ├── db_utils.py               # Database operations
-│   │   ├── models.py                 # Data models
-│   │   └── __init__.py
-│   ├── steganalysis/
-│   │   ├── feature_extraction.py     # AI feature extraction
-│   │   ├── detection.py              # Steganalysis detection
-│   │   └── __init__.py
-│   └── __init__.py
-├── tests/
-│   ├── unit/
-│   │   ├── test_steganography.py     # 84 unit tests
-│   │   ├── test_encryption.py        # Encryption tests
-│   │   └── __init__.py
-│   ├── integration/
-│   │   ├── test_full_workflows.py    # 22 integration tests
-│   │   ├── test_encode_decode_flow.py
-│   │   ├── test_db_operations.py     # Database operations
-│   │   └── __init__.py
-│   ├── fixtures/
-│   │   ├── test_fixtures.py          # 38 fixture tests
-│   │   ├── test_data.py
-│   │   └── __init__.py
-│   ├── conftest.py                   # Pytest configuration
-│   └── __init__.py
-├── requirements.txt
-├── requirements-dev.txt
-├── README.md
-├── LICENSE
-└── .gitignore
+│   │   ├── __init__.py
+│   │   ├── create_db.py        # ← MOVED HERE: Database creation module
+│   │   ├── db_utils.py         # PostgreSQL operations
+│   │   └── db_utils_minimal.py # Lightweight DB operations
+│   ├── stego/                  # Core Steganography Engine
+│   │   ├── __init__.py
+│   │   ├── lsb_steganography.py        # LSB (Spatial Domain) method
+│   │   ├── dct_steganography.py        # Hybrid DCT (Y-Channel) method
+│   │   └── dwt_steganography.py        # Hybrid DWT (Haar Wavelet) method
+│   ├── analytics/              # Analytics & Statistics
+│   │   ├── __init__.py
+│   │   └── stats.py            # Chart generation, statistics calculations
+│   ├── encryption/             # Encryption Module
+│   │   ├── __init__.py
+│   │   └── encryption.py       # XOR cipher with SHA-256 key derivation
+│   ├── ui/                     # User Interface
+│   │   ├── __init__.py
+│   │   ├── styles.py           # Dark theme styling & CSS
+│   │   └── ui_components.py    # Streamlit UI sections (encode, decode, etc.)
+│   ├── batch_processing/       # Batch processing module
+│   │   ├── __init__.py
+│   │   ├── batch_encode.py     # Batch encoding functions
+│   │   └── batch_decode.py     # Batch decoding functions
+│   ├── utils/                  # Utility functions
+│       ├── __init__.py
+│       └── file_utils.py       # File handling and validation
+│
+└── .venv/                      # Python virtual environment
+```
+
+### Module Organization
+
+**`src/stego/`** - Steganography Engine
+- Independent implementations of LSB, DCT, and DWT methods
+- Each method has encode/decode functions
+- No external dependencies between methods
+
+**`src/db/`** - Database Layer
+- PostgreSQL connection management
+- User authentication with SHA-256 password hashing
+- Operation logging (encode/decode history)
+- Statistics retrieval for analytics
+
+**`src/analytics/`** - Analytics & Visualization
+- Chart generation (Plotly)
+- Statistics calculations
+- Activity logs and dataframes
+- Real-time metrics
+
+**`src/encryption/`** - Message Security
+- XOR cipher with SHA-256 key derivation
+- Symmetric encryption/decryption
+- Optional message protection
+
+**`src/ui/`** - Web Interface
+- Streamlit UI components
+- Dark theme styling
+- Authentication section
+- Encode/Decode sections
+- Comparison and Statistics sections
+
+**`src/batch_processing/`** - Batch Processing Module
+- Batch encoding and decoding functions
+- File validation and error handling
+- Integration with core steganography engine
+
+**`src/utils/`** - Utility Functions
+- File handling and validation
+- Logging and configuration management
+- Helper functions for common tasks
+
+---
+
+## 🔐 Usage Guide
+
+### 1. **Create Account**
+- Click "Create New Account" on the login screen
+- Enter username and password
+- Account is created in PostgreSQL database
+
+### 2. **Encode Message**
+- Go to **Encode** tab
+- Select steganography method (LSB, DCT, or DWT)
+- Upload cover image (PNG/JPG)
+- Enter secret message
+- (Optional) Enable encryption with AES-256
+- Click "Encode Message"
+- Download the encoded image
+
+### 3. **Decode Message**
+- Go to **Decode** tab
+- Upload encoded image
+- Select the method used for encoding
+- Click "Decode Message"
+- View extracted message
+- (If encrypted) Message is automatically decrypted
+
+### 4. **Compare Methods**
+- Go to **Comparison** tab
+- Upload cover image
+- Enter secret message
+- View side-by-side comparison of all three methods
+- See PSNR (Peak Signal-to-Noise Ratio) for each method
+
+### 5. **View Analytics**
+- Go to **Statistics** tab
+- View operation timeline (last 7 days)
+- See method distribution pie chart
+- Check encode vs decode statistics
+- Monitor encryption usage
+- View data size distribution
+- See recent activity log
+
+### 6. **Batch Processing**
+- Go to **Batch Processing** tab
+- Select folder with images for encoding/decoding
+- Choose steganography method and encryption options
+- Click "Start Batch Processing"
+- Download link for processed images will be provided
+
+---
+
+## 🔧 Technical Details
+
+### Steganography Methods
+
+#### LSB (Least Significant Bit)
+- **Domain**: Spatial
+- **Capacity**: ~2.5% of image size
+- **Detection Resistance**: Low
+- **Computational Cost**: Very Low
+- **Quality**: Excellent (PSNR > 50 dB)
+
+#### Hybrid DCT
+- **Domain**: Frequency (Y-channel only)
+- **Capacity**: ~1.5% of image size
+- **Detection Resistance**: Medium
+- **Computational Cost**: Medium
+- **Quality**: Good (PSNR > 40 dB)
+
+#### Hybrid DWT (Haar Wavelet)
+- **Domain**: Frequency (Wavelet)
+- **Capacity**: ~2% of image size
+- **Detection Resistance**: High
+- **Computational Cost**: Medium-High
+- **Quality**: Very Good (PSNR > 45 dB)
+
+### Encryption
+- **Algorithm**: XOR cipher with SHA-256 key derivation
+- **Key Size**: 256-bit (derived from password)
+- **Security**: Suitable for steganography; recommended AES-256 for highly sensitive data
+- **Performance**: Very fast (negligible overhead)
+
+### Database Schema
+
+**users**
+```sql
+user_id (PK) | username | password_hash | created_at
+```
+
+**operations**
+```sql
+operation_id (PK) | user_id (FK) | operation_type | method | 
+data_size | is_encrypted | status | created_at
+```
+
+**activity_log**
+```sql
+activity_id (PK) | user_id (FK) | action | created_at
 ```
 
 ---
 
-## 🎯 Steganography Methods
+## 📊 Analytics & Statistics
 
-### LSB (Least Significant Bit)
-
-**Domain:** Spatial Domain
-
-**How it works:**
-- Embeds data in the least significant bit of each pixel channel
-- Example: RGB pixel (255, 128, 64) becomes (255, 128, 65) to store 1 bit
-
-**Characteristics:**
-```
-┌─────────────────────────────────┐
-│ Capacity:    30+ KB per image   │
-│ Speed:       ⚡⚡⚡ Very Fast     │
-│ Resilience:  ⚠️  Low             │
-│ JPEG Safe:   ❌ No              │
-│ Use Case:    Max capacity       │
-└─────────────────────────────────┘
-```
-
-**Advantages:**
-- ✅ Enormous capacity (30KB+ per image)
-- ✅ Very fast encoding/decoding
-- ✅ Simple implementation
-
-**Disadvantages:**
-- ❌ Not resilient to JPEG compression
-- ❌ Easily detected by steganalysis
-- ❌ Not robust to image processing
-
-### DCT (Discrete Cosine Transform)
-
-**Domain:** Frequency Domain (JPEG)
-
-**How it works:**
-- Embeds data in DCT coefficients used by JPEG compression
-- Survives JPEG re-encoding (resilient method)
-- Example: Modify middle-frequency coefficients
-
-**Characteristics:**
-```
-┌─────────────────────────────────┐
-│ Capacity:    1.5 KB per image   │
-│ Speed:       ⏱️  Moderate       │
-│ Resilience:  ✅ High (JPEG)      │
-│ JPEG Safe:   ✅ Yes             │
-│ Use Case:    JPEG distribution  │
-└─────────────────────────────────┘
-```
-
-**Advantages:**
-- ✅ Survives JPEG compression
-- ✅ Resilient to lossy operations
-- ✅ Industry standard
-
-**Disadvantages:**
-- ❌ Lower capacity than LSB
-- ❌ Computationally expensive
-- ❌ Less detectable by simple analysis
-
-### DWT (Discrete Wavelet Transform)
-
-**Domain:** Frequency Domain (Wavelet)
-
-**How it works:**
-- Embeds data in wavelet coefficients
-- Decomposes image into frequency bands
-- More resilient to noise than DCT
-
-**Characteristics:**
-```
-┌─────────────────────────────────┐
-│ Capacity:    2+ KB per image    │
-│ Speed:       ⏱️  Moderate       │
-│ Resilience:  ✅ Very High        │
-│ JPEG Safe:   ✅ Moderate         │
-│ Use Case:    Noise resistance   │
-└─────────────────────────────────┘
-```
-
-**Advantages:**
-- ✅ Multi-resolution analysis
-- ✅ Excellent noise resilience
-- ✅ Wavelet decomposition benefits
-
-**Disadvantages:**
-- ❌ Even lower capacity
-- ❌ Complex implementation
-- ❌ Computationally intensive
-
----
-
-## 🔐 Encryption
-
-### AES-256-CBC
-
-**Algorithm:** Advanced Encryption Standard, 256-bit key, Cipher Block Chaining
-
-**Features:**
-```python
-from src.encryption.encryption import encrypt_message, decrypt_message
-
-# Encryption
-plaintext = "Secret message"
-password = "MyPassword123"
-ciphertext = encrypt_message(plaintext, password)
-# Output: Base64 encoded encrypted data with PBKDF2 salt
-
-# Decryption
-recovered = decrypt_message(ciphertext, password)
-# Output: "Secret message"
-```
-
-**Security Parameters:**
-- **Key Derivation:** PBKDF2 with SHA-256
-- **Iterations:** 100,000
-- **Salt:** 16 bytes cryptographically random
-- **IV:** 16 bytes random per encryption
-- **Authentication:** Built-in validation
+The application tracks:
+- **Total Operations**: Count of all encode/decode operations
+- **Method Usage**: Distribution of LSB, DCT, DWT usage
+- **Encryption Rate**: Percentage of operations using encryption
+- **Operation Timeline**: Operations per day over 7 days
+- **Data Size Distribution**: Breakdown of message sizes
+- **User Activity**: Recent operations by all users
 
 ---
 
 ## 🧪 Testing
 
-### Test Results (Latest Run)
-
-```
-========== 178 passed, 2 skipped in 243.95s ==========
-
-✅ Unit Tests:           84 passed
-✅ Integration Tests:    22 passed
-✅ Fixture Tests:        38 passed
-✅ Database Tests:       34 passed
-⏭️  Skipped:             2
-────────────────────────────────────
-```
-
-### Test Coverage Breakdown
-
-| Module | Coverage | Tests |
-|--------|----------|-------|
-| LSB Steganography | 95%+ | 20+ |
-| DCT Steganography | 92%+ | 15+ |
-| DWT Steganography | 90%+ | 15+ |
-| Encryption | 98%+ | 15+ |
-| Database Ops | 88%+ | 34+ |
-| Image Filters | 100% | 10+ |
-| **TOTAL** | **92%+** | **178** |
-
-### Run Tests
-
+Run steganography tests:
 ```bash
-# All tests with verbose output
-pytest tests/ -v
-
-# Run specific test category
-pytest tests/unit/ -v              # Unit tests only
-pytest tests/integration/ -v       # Integration tests only
-pytest tests/fixtures/ -v          # Fixture tests only
-
-# Generate coverage report
-pytest tests/ --cov=src --cov-report=html
-# View: htmlcov/index.html
-
-# Run without database tests (if DB unavailable)
-pytest tests/ -v -m "not requires_db"
-
-# Run with markers
-pytest tests/ -v -m unit           # Only unit tests
-pytest tests/ -v -m integration    # Only integration tests
-
-# Show test summary
-pytest tests/ -v --tb=short
+python test_steganography.py
 ```
 
-### Test Organization
-
-**Unit Tests** (`tests/unit/`)
-- Core functionality of each steganography method
-- Encryption/decryption operations
-- Image filtering and mode conversion
-- Edge cases and error handling
-
-**Integration Tests** (`tests/integration/`)
-- End-to-end workflows (encode → save → load → decode)
-- Multi-method comparisons
-- Encryption + steganography combined workflows
-- Database operations and logging
-- JPEG compression resilience
-
-**Fixture Tests** (`tests/fixtures/`)
-- Test data generation quality
-- Fixture scope validation
-- Cleanup behavior
-- Parameterized fixtures
-
----
-
-## 💡 Usage Examples
-
-### Example 1: Basic Image Steganography
-
-```python
-from PIL import Image
-from src.stego.lsb_steganography import encode_image, decode_image
-
-# Load cover image
-cover = Image.open('nature.png')
-
-# Hide message
-msg = "Meeting at midnight"
-stego = encode_image(cover, msg, filter_type="Blur")
-stego.save('stego.png')
-
-# Retrieve message
-retrieved = decode_image(stego)
-print(f"Retrieved: {retrieved}")
-```
-
-### Example 2: Secure Secret Sharing
-
-```python
-from PIL import Image
-from src.stego.dct_steganography import encode_dct, decode_dct
-from src.encryption.encryption import encrypt_message, decrypt_message
-
-# Prepare message
-secret = "Account: user@email.com, Password: xyz123"
-password = "VerySecurePassword!@#$"
-
-# Encrypt
-encrypted = encrypt_message(secret, password)
-
-# Hide in image
-img = Image.open('background.jpg')
-stego = encode_dct(img, encrypted)
-stego.save('secure.jpg')
-
-# Recipient retrieves and decrypts
-retrieved_encrypted = decode_dct(stego)
-decrypted = decrypt_message(retrieved_encrypted, password)
-print(f"Secret: {decrypted}")
-```
-
-### Example 3: Choosing the Right Method
-
-```python
-from PIL import Image
-from src.stego.lsb_steganography import encode_image, decode_image
-from src.stego.dct_steganography import encode_dct, decode_dct
-from src.stego.dwt_steganography import encode_dwt, decode_dwt
-
-img = Image.open('image.png')
-msg = "Secret message"
-
-# Choose method based on use case:
-
-# 1. Maximum capacity (won't be compressed)
-if not will_be_compressed:
-    encoded = encode_image(img, msg, "None")
-    print(f"LSB: Can hide up to 30KB")
-
-# 2. Sending via email (will be JPEG compressed)
-elif will_be_jpeg_compressed:
-    encoded = encode_dct(img, msg)
-    print(f"DCT: Survives JPEG compression")
-
-# 3. Needs to survive heavy processing
-elif high_robustness_needed:
-    encoded = encode_dwt(img, msg)
-    print(f"DWT: Survives noise and distortion")
-```
-
----
-
-## 📊 Performance Comparison
-
-### Encoding Speed (per 1000 bytes)
-
-```
-LSB:  ████████████████████ 5ms  (⚡ Very Fast)
-DCT:  ██████████████████████░░░  35ms (Moderate)
-DWT:  ██████████████████████░░░░ 45ms (Moderate)
-```
-
-### Capacity (per 512x512 image)
-
-```
-LSB:  ████████████████████ 30KB (Huge)
-DCT:  ███░░░░░░░░░░░░░░░░  1.5KB
-DWT:  ████░░░░░░░░░░░░░░░  2KB
-```
-
-### Resilience to JPEG (Quality 85)
-
-```
-LSB:  ░░░░░░░░░░░░░░░░░░░░ 0% (No resilience)
-DCT:  ██████████████████░░ 90% (Very Resilient)
-DWT:  █████████████████░░░ 85% (Resilient)
-```
-
----
-
-## 🔧 Configuration
-
-### Database Setup (MySQL)
-
-```python
-# File: src/db/db_utils.py
-
-DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'stego_user',
-    'password': 'secure_password',
-    'database': 'stego_db'
-}
-```
-
-### Image Requirements
-
-- **Minimum Size:** 256×256 pixels (LSB), 512×512 (DCT/DWT)
-- **Supported Formats:** PNG, JPEG, BMP, GIF
-- **Supported Modes:** RGB, RGBA, Grayscale (L)
-- **Recommended:** RGB PNG for maximum flexibility
-
----
-
-## 🚨 Common Issues & Solutions
-
-### Issue: "Message too large for image"
-
-```python
-# Solution: Check capacity before encoding
-from PIL import Image
-
-img = Image.open('image.png')
-pixels = img.size[0] * img.size[1]
-
-# LSB capacity (rough estimate)
-lsb_capacity = (pixels * 3) // 8  # bytes
-
-if len(message) > lsb_capacity:
-    # Use DCT or DWT instead
-    from src.stego.dct_steganography import encode_dct
-    encoded = encode_dct(img, message)
-```
-
-### Issue: "JPEG compression destroyed message"
-
-```python
-# Solution: Use DCT or DWT instead of LSB
-from src.stego.dct_steganography import encode_dct, decode_dct
-
-# This survives JPEG compression
-encoded = encode_dct(img, message)
-encoded.save('distributed.jpg', quality=85)  # Safe!
-retrieved = decode_dct(encoded)
-```
-
-### Issue: "Decryption failed: wrong password or tampered data"
-
-```python
-# Solution: Verify password and data integrity
-from src.encryption.encryption import decrypt_message
-
-try:
-    plaintext = decrypt_message(ciphertext, password)
-except ValueError as e:
-    print(f"Decryption failed: {e}")
-    # Causes:
-    # - Wrong password
-    # - Data corrupted during transmission
-    # - Tampered ciphertext
-```
-
----
-
-## 📚 API Reference
-
-### LSB Steganography
-
-```python
-from src.stego.lsb_steganography import encode_image, decode_image
-
-# Encoding
-encode_image(
-    image: PIL.Image,
-    message: str,
-    filter_type: str = "None"  # "None", "Blur", "Sharpen", "Grayscale"
-) -> PIL.Image
-
-# Decoding
-decode_image(image: PIL.Image) -> str
-```
-
-### DCT Steganography
-
-```python
-from src.stego.dct_steganography import encode_dct, decode_dct
-
-# Encoding
-encode_dct(image: PIL.Image, message: str) -> PIL.Image
-
-# Decoding
-decode_dct(image: PIL.Image) -> str
-```
-
-### DWT Steganography
-
-```python
-from src.stego.dwt_steganography import encode_dwt, decode_dwt
-
-# Encoding (image must have even dimensions)
-encode_dwt(image: PIL.Image, message: str) -> PIL.Image
-
-# Decoding
-decode_dwt(image: PIL.Image) -> str
-```
-
-### Encryption
-
-```python
-from src.encryption.encryption import encrypt_message, decrypt_message
-
-# Encryption
-encrypt_message(plaintext: str, password: str) -> str
-
-# Decryption
-decrypt_message(ciphertext: str, password: str) -> str
-```
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/YourFeature`
-3. Commit changes: `git commit -am 'Add YourFeature'`
-4. Push to branch: `git push origin feature/YourFeature`
-5. Submit Pull Request
-
-### Development Setup
-
+Test database connection:
 ```bash
-# Install dev dependencies
-pip install -r requirements-dev.txt
-
-# Run tests
-pytest tests/ -v
-
-# Generate coverage
-pytest tests/ --cov=src --cov-report=html
-
-# Format code
-black src/
-pylint src/
-
-# Type checking
-mypy src/
+python test_db.py
 ```
 
 ---
 
+## ⚙️ Configuration
 
-### 📦 Module 6: Error Correction Code (ECC)
+### Streamlit Configuration (`.streamlit/config.toml`)
+```toml
+[theme]
+primaryColor = "#238636"
+backgroundColor = "#0E1117"
+secondaryBackgroundColor = "#161B22"
+textColor = "#C9D1D9"
+font = "sans serif"
 
-**Status:** ✅ Implemented & Integrated
+[client]
+showErrorDetails = true
+showWarningOnDirectExecution = true
 
-**Purpose:**
-Protect hidden messages from corruption caused by JPEG compression, image noise, or transmission errors using Reed-Solomon error correction codes.
+[logger]
+level = "info"
 
-**Features:**
-- **Reed-Solomon Encoding:** Add redundancy bytes (8-128 configurable) to messages
-- **Automatic Recovery:** Recover original message from corrupted data (up to nsym/2 byte errors)
-- **Capacity Checker:** Visual warnings if message + ECC overhead exceeds image capacity
-- **ECC Testing:** Interactive test interface with corruption simulation
-- **Capacity Calculator:** Plan image/message sizes before encoding
-
-**How to Use:**
-
-**Encoding with ECC:**
-1. Enable "🛡️ Enable Error Correction (ECC)" checkbox in Encode tab
-2. Set ECC Strength (parity bytes): 
-   - 8-16 bytes: Light protection (~0.3-0.6% overhead)
-   - 32 bytes: **Recommended** (~1.2% overhead, recovers ~16 byte errors)
-   - 64-128 bytes: Heavy protection (~2.5-5% overhead)
-3. Capacity warning auto-appears if message doesn't fit
-4. Click "Encode" — ECC is applied before embedding
-
-**Decoding with ECC Recovery:**
-1. During decode, enable "🔧 Try to recover from errors" checkbox
-2. Set expected ECC strength (must match encoding setting)
-3. Click "Extract Message"
-4. System automatically detects and corrects errors if present
-
-**Configuration:**
-```python
-from stegotool.modules.module6_redundancy import add_redundancy, recover_redundancy
-
-# Encoding
-message_bytes = b"Secret message"
-with_ecc = add_redundancy(message_bytes, nsym=32)  # Add 32 parity bytes
-
-# Decoding
-recovered = recover_redundancy(with_ecc, nsym=32)  # Auto-corrects errors
+[server]
+port = 8501
+headless = true
 ```
 
+### Environment Variables (`.env`)
+```bash
+DB_HOST=localhost              # PostgreSQL host
+DB_PORT=5432                   # PostgreSQL port
+DB_NAME=stegnography           # Database name
+DB_USER=postgres               # PostgreSQL username
+DB_PASSWORD=your_password      # PostgreSQL password
+```
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+### Secrets Configuration (`.streamlit/secrets.toml`)
+Optional for cloud deployments:
+```toml
+[postgres]
+host = "your_host"
+port = "5432"
+dbname = "your_db"
+user = "your_user"
+password = "your_password"
+sslmode = "require"
+```
 
 ---
 
-## 👨‍💻 Author
+## 🐛 Troubleshooting
 
-**Faiz527** - [GitHub Profile](https://github.com/Faiz527)
+### Database Connection Failed
+- Ensure PostgreSQL is running: `Get-Service postgresql-x64-*`
+- Verify database exists: `psql -U postgres -h localhost -l`
+- Check `.env` credentials are correct
+
+### Import Errors
+- Ensure virtual environment is activated
+- Run `pip install -r requirements.txt`
+- Verify all files are in correct locations
+
+### Image Upload Issues
+- Ensure image is PNG or JPG format
+- Image size should be at least 100x100 pixels
+- File size should be less than 100 MB
+
+### Encoding/Decoding Errors
+- Verify correct method is selected for decoding
+- Ensure image format matches (no format conversion)
+- Check that image hasn't been compressed or modified
+
+---
+
+## 📈 Performance Metrics
+
+Typical performance on modern hardware:
+
+| Operation | Time | Memory |
+|-----------|------|--------|
+| LSB Encode (1MB) | 0.5s | 50MB |
+| DCT Encode (1MB) | 1.2s | 80MB |
+| DWT Encode (1MB) | 1.5s | 100MB |
+| Decode Any Method | 0.3s | 40MB |
+
+---
+
+## 🔒 Security Considerations
+
+- ✅ Passwords hashed with SHA-256
+- ✅ AES-256 encryption for message protection
+- ✅ HTTPS recommended for production deployment
+- ✅ Database access controlled via credentials
+- ✅ No sensitive data in logs
+
+---
+
+## 📝 License
+
+This project is provided as-is for educational purposes.
+
+---
+
+## 👨‍💻 Developer Information
+
+**Application**: Image Steganography & Watermarking (ITR)
+**Version**: 1.0.0
+**Built with**: 
+- Streamlit (Frontend)
+- PostgreSQL (Database)
+- Python 3.10+
+
+**Key Libraries**:
+- `Pillow` - Image processing
+- `NumPy/SciPy` - Scientific computing
+- `PyWavelets` - Wavelet transforms
+- `Plotly` - Interactive visualizations
+- `psycopg2` - PostgreSQL adapter
+- `cryptography` - Encryption
+
+---
+
+## 🚀 Future Enhancements
+
+Potential improvements:
+- [ ] Quality Metrics Module - PSNR, MSE, SSIM calculations
+- [ ] Auto-detection Module - Automatically select best method per image
+- [ ] Additional image formats (BMP, TIFF, WebP, etc.)
+- [ ] Video steganography support
+- [ ] Real-time image preview during encoding
+- [ ] Report generation (PDF, CSV, JSON)
+- [ ] Advanced steganalysis detection
+- [ ] Cloud storage integration (AWS S3, Google Drive)
+- [ ] Mobile app support
+- [ ] Docker containerization
+- [ ] Distributed computing for large-scale batch processing
+
+---
+
+## 📚 Module Development Guide
+
+### Adding New Steganography Method
+
+1. Create new file in `src/stego/` (e.g., `new_method_steganography.py`)
+2. Implement `encode_method(img, secret_text)` and `decode_method(img)`
+3. Export functions in `src/stego/__init__.py`
+4. Add UI section in `src/ui/ui_components.py`
+5. Update imports in `streamlit_app.py`
+
+### Adding New Chart/Statistic
+
+1. Create function in `src/analytics/stats.py`
+2. Export in `src/analytics/__init__.py`
+3. Import in `src/ui/ui_components.py`
+4. Add UI element in `show_statistics_section()`
+
+### Database Operations
+
+1. Add function in `src/db/db_utils.py`
+2. Export in `src/db/__init__.py`
+3. Call from appropriate UI component
 
 ---
 
 ## 📞 Support
 
-For issues, questions, or suggestions:
-- 🐛 Open an [Issue](https://github.com/Faiz527/AI-integrated-Stego-tool-box-/issues)
-- 💬 Start a [Discussion](https://github.com/Faiz527/AI-integrated-Stego-tool-box-/discussions)
-- 📧 Contact via GitHub
+For issues or questions:
+1. Check the troubleshooting section
+2. Review error messages carefully
+3. Verify all dependencies are installed
+4. Test database connection with `test_db.py`
 
 ---
 
-## 🙏 Acknowledgments
-
-- OpenCV & PIL for image processing
-- PyCryptodome for encryption
-- PyWavelets for DWT implementation
-- NumPy & SciPy for scientific computing
-
----
-
-**Last Updated:** March 5, 2026
-**Status:** ✅ Production Ready
-**Test Coverage:** 92%+
+**Last Updated**: December 2, 2025
+**Project Structure**: Modular Architecture v1.0
+**Latest Changes**: Refactored into modular packages (stego, db, analytics, encryption, ui)
