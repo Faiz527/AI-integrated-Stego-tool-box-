@@ -6,19 +6,6 @@ Utility functions for Module 3: entropy, patch extraction, scoring helpers.
 from typing import Tuple
 import numpy as np
 import cv2
-from math import log2
-
-def compute_entropy(patch: np.ndarray) -> float:
-    """Shannon entropy for a grayscale patch (0-255)."""
-    if patch.size == 0:
-        return 0.0
-    hist = np.bincount(patch.flatten(), minlength=256).astype(np.float32)
-    prob = hist / hist.sum()
-    prob = prob[prob > 0]
-    return -float((prob * np.log2(prob)).sum())
-
-def patch_variance(patch: np.ndarray) -> float:
-    return float(np.var(patch.astype(np.float32)))
 
 def get_gray(image_rgb: np.ndarray) -> np.ndarray:
     """Convert RGB numpy image to grayscale (uint8)."""
@@ -26,11 +13,40 @@ def get_gray(image_rgb: np.ndarray) -> np.ndarray:
         return image_rgb
     return cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
 
-def extract_patch(gray: np.ndarray, cx: int, cy: int, size: int = 3) -> np.ndarray:
-    h, w = gray.shape
-    half = size // 2
-    y1 = max(0, cy - half)
-    y2 = min(h, cy + half + 1)
-    x1 = max(0, cx - half)
-    x2 = min(w, cx + half + 1)
-    return gray[y1:y2, x1:x2]
+def compute_laplacian_map(gray: np.ndarray) -> np.ndarray:
+    """
+    Compute Laplacian map for entire image (vectorized).
+    Returns: HxW array of Laplacian variance values (float64).
+    """
+    lap = cv2.Laplacian(gray, cv2.CV_64F)
+    return lap.astype(np.float64)
+
+def compute_variance_map(gray: np.ndarray, patch_size: int = 3) -> np.ndarray:
+    """
+    Compute local variance map (vectorized using sliding window).
+    Returns: HxW array of local variance values.
+    """
+    gray_float = gray.astype(np.float32)
+    
+    # Compute mean and squared mean efficiently using filter2D
+    kernel = np.ones((patch_size, patch_size), dtype=np.float32) / (patch_size * patch_size)
+    mean = cv2.filter2D(gray_float, -1, kernel)
+    sq_mean = cv2.filter2D(gray_float**2, -1, kernel)
+    
+    var_map = sq_mean - mean**2
+    return np.maximum(var_map, 0).astype(np.float32)
+
+def compute_entropy_map_fast(gray: np.ndarray, patch_size: int = 3) -> np.ndarray:
+    """
+    Compute entropy approximation map (fast version using edge detection).
+    For very fast computation, use Sobel edges as proxy for entropy.
+    Returns: HxW array of entropy approximation values.
+    """
+    # Use edge detection as fast approximation to entropy
+    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+    sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+    edges = np.sqrt(sobelx**2 + sobely**2)
+    
+    # Smooth edges to get entropy-like map
+    entropy_map = cv2.GaussianBlur(edges, (patch_size, patch_size), 0)
+    return entropy_map.astype(np.float32)

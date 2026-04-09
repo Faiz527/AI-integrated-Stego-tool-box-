@@ -9,6 +9,7 @@ from . import db
 from . import analytics
 from . import encryption
 from . import ui
+from . import comparison  
 
 __version__ = "1.0.0"
 __author__ = "Faiz527"
@@ -18,5 +19,6 @@ __all__ = [
     'db',
     'analytics',
     'encryption',
-    'ui'
+    'ui',
+    'comparison' 
 ]
