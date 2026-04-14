@@ -7,6 +7,7 @@ Main entry point - orchestrates all UI components.
 from pathlib import Path
 import sys
 import logging
+import os
 
 # Configure base path
 BASE_PATH = Path(__file__).parent.absolute()
@@ -70,29 +71,21 @@ if "current_page" not in st.session_state:
 # ============================================================================
 
 @st.cache_resource
-def init_db_with_timeout():
-    """Initialize database once with timeout."""
+def init_database():
+    """Initialize database - cached to run once per session."""
     try:
-        # Add timeout to prevent hanging
-        import signal
-        
-        def timeout_handler(signum, frame):
-            raise TimeoutError("Database init timeout")
-        
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(5)  # 5 second timeout
-        
         db_available = initialize_database()
-        signal.alarm(0)  # Cancel alarm
+        if db_available:
+            logger.info("✅ Database connected (Neon)")
+        else:
+            logger.warning("⚠️ Database not available")
         return db_available
-    except TimeoutError:
-        logger.warning("⚠️ Database initialization timeout - skipping")
-        return False
     except Exception as e:
-        logger.error(f"Database init failed: {e}")
+        logger.error(f"Database connection failed: {e}")
+        logger.info("App will continue without authentication")
         return False
 
-db_available = init_db_with_timeout()
+db_available = init_database()
 
 if db_available:
     logger.info("✅ Database initialized successfully")

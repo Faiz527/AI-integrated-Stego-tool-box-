@@ -27,14 +27,19 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 load_dotenv(dotenv_path=str(PROJECT_ROOT / '.env'))
 
-# Database configuration
+# Database configuration - handles both local and Streamlit Cloud
 DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
     'port': os.getenv('DB_PORT', '5432'),
     'database': os.getenv('DB_NAME', 'stegnography'),
     'user': os.getenv('DB_USER', 'postgres'),
-    'password': os.getenv('DB_PASSWORD', 'Password')
+    'password': os.getenv('DB_PASSWORD', 'Password'),
+    'sslmode': os.getenv('DB_SSLMODE', 'require')  # Neon requires SSL
 }
+
+# Add SSL mode to connection if needed
+if os.getenv('DB_SSLMODE') == 'require':
+    DB_CONFIG['sslmode'] = 'require'
 
 # Rate limiting configuration
 RATE_LIMIT_WINDOW = 300  # 5 minutes
