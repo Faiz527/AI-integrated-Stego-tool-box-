@@ -16,8 +16,6 @@ from collections import defaultdict
 from threading import Lock
 from dotenv import load_dotenv
 from pathlib import Path
-from sqlalchemy import create_engine
-from sqlalchemy.pool import QueuePool
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -46,23 +44,6 @@ RATE_LIMIT_WINDOW = 300  # 5 minutes
 MAX_LOGIN_ATTEMPTS = 5
 _login_attempts = defaultdict(list)
 _rate_limit_lock = Lock()
-
-# Create engine with pooling
-CONNECTION_STRING = (
-    f"postgresql://{DB_CONFIG['user']}:"
-    f"{DB_CONFIG['password']}"
-    f"@{DB_CONFIG['host']}"
-    f":{DB_CONFIG['port']}"
-    f"/{DB_CONFIG['database']}"
-)
-engine = create_engine(
-    CONNECTION_STRING,
-    poolclass=QueuePool,
-    pool_size=5,
-    max_overflow=10,
-    pool_pre_ping=True,
-    pool_recycle=3600
-)
 
 
 class DatabaseError(Exception):
@@ -177,11 +158,12 @@ def get_db_connection():
                 database=creds.get('dbname'),
                 user=creds.get('user'),
                 password=creds.get('password'),
+                connect_timeout=5,
                 sslmode=creds.get('sslmode', 'require')
             )
             return conn
     except Exception as e:
-        logger.debug(f"Streamlit secrets not available: {e}")
+        logger.debug(f"Database connection failed: {e}")
     
     # Fall back to .env for local development
     try:
@@ -240,6 +222,19 @@ def initialize_database():
                 action VARCHAR(255),
                 details TEXT,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        
+        # Create operations table (needed for statistics and tracking)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS operations (
+                id SERIAL PRIMARY KEY,
+                user_id INT REFERENCES users(id),
+                method VARCHAR(50),
+                message_size INT,
+                encoding_time FLOAT,
+                output_image TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
         
