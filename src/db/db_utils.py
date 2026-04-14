@@ -16,6 +16,8 @@ from collections import defaultdict
 from threading import Lock
 from dotenv import load_dotenv
 from pathlib import Path
+from sqlalchemy import create_engine
+from sqlalchemy.pool import QueuePool
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -39,6 +41,23 @@ RATE_LIMIT_WINDOW = 300  # 5 minutes
 MAX_LOGIN_ATTEMPTS = 5
 _login_attempts = defaultdict(list)
 _rate_limit_lock = Lock()
+
+# Create engine with pooling
+CONNECTION_STRING = (
+    f"postgresql://{DB_CONFIG['user']}:"
+    f"{DB_CONFIG['password']}"
+    f"@{DB_CONFIG['host']}"
+    f":{DB_CONFIG['port']}"
+    f"/{DB_CONFIG['database']}"
+)
+engine = create_engine(
+    CONNECTION_STRING,
+    poolclass=QueuePool,
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True,
+    pool_recycle=3600
+)
 
 
 class DatabaseError(Exception):

@@ -9,6 +9,8 @@ port = 8501
 headless = true
 maxUploadSize = 200
 enableXsrfProtection = true
+runOnSave = false
+maxMessageSize = 200
 
 [theme]
 primaryColor = "#238636"
