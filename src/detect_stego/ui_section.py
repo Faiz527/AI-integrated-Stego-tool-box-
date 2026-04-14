@@ -30,6 +30,14 @@ from .ml_detector import analyze_image_for_steganography, StegoDetectorML, get_d
 
 logger = logging.getLogger(__name__)
 
+# Check for PyTorch
+try:
+    import torch
+    import torchvision
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+
 
 def show_info_box(title, description, use_cases):
     """Display a consistent info box explaining a feature."""
