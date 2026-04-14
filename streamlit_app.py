@@ -70,16 +70,29 @@ if "current_page" not in st.session_state:
 # ============================================================================
 
 @st.cache_resource
-def init_db():
-    """Initialize database once per session."""
+def init_db_with_timeout():
+    """Initialize database once with timeout."""
     try:
+        # Add timeout to prevent hanging
+        import signal
+        
+        def timeout_handler(signum, frame):
+            raise TimeoutError("Database init timeout")
+        
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(5)  # 5 second timeout
+        
         db_available = initialize_database()
+        signal.alarm(0)  # Cancel alarm
         return db_available
+    except TimeoutError:
+        logger.warning("⚠️ Database initialization timeout - skipping")
+        return False
     except Exception as e:
-        logger.error(f"Database initialization failed: {e}")
+        logger.error(f"Database init failed: {e}")
         return False
 
-db_available = init_db()
+db_available = init_db_with_timeout()
 
 if db_available:
     logger.info("✅ Database initialized successfully")
