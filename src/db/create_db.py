@@ -12,6 +12,11 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 import sys
+import io
+
+# Fix encoding for Windows console
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 # Adjust path - go up 2 levels from src/db/ to project root
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -30,7 +35,7 @@ db_port = int(os.getenv('DB_PORT', 5432))
 db_user = os.getenv('DB_USER', 'postgres')
 db_name = os.getenv('DB_NAME', 'stegnography')
 
-print(f"🔧 Using credentials from .env:")
+print(f"[*] Using credentials from .env:")
 print(f"   Host: {db_host}")
 print(f"   Port: {db_port}")
 print(f"   User: {db_user}")

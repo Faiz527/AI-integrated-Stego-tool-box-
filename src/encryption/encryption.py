@@ -103,15 +103,12 @@ def encrypt_message(message, password):
         padder = sym_padding.PKCS7(_AES_BLOCK_BITS).padder()
         padded = padder.update(message.encode("utf-8")) + padder.finalize()
 
-        # --- AES-256-CBC encrypt ---------------------------------------------
+        # --- AES-256-CBC encrypt (CLEAN) ----------------------------------------
         cipher = Cipher(
             algorithms.AES(enc_key),
             modes.CBC(iv),
             backend=default_backend(),
         )
-        ciphertext = cipher.encryptor().update(padded) + cipher.encryptor().finalize()
-
-        # NOTE: encryptor must be used as a single context to avoid state issues
         encryptor = cipher.encryptor()
         ciphertext = encryptor.update(padded) + encryptor.finalize()
 

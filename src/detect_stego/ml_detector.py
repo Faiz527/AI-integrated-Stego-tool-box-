@@ -211,7 +211,7 @@ class StegoDetectorML:
             else:
                 features.append(0)
             
-            # Feature 4: ASCII Characters in LSB Extraction
+            # Feature 4: ASCII Ratio (reduce sensitivity)
             # ✅ FIX: Only check first 1000 pixels to avoid false positives
             binary_data = ''
             flat_array = img_array.reshape(-1, 3)
@@ -231,6 +231,7 @@ class StegoDetectorML:
                     ascii_count += 1
             
             ascii_ratio = ascii_count / total_bytes if total_bytes > 0 else 0
+            ascii_ratio = min(ascii_ratio * 0.5, 1.0)  # ← Scale down to 50%
             features.append(ascii_ratio)
             
             # Feature 5: Chi-Square Statistic

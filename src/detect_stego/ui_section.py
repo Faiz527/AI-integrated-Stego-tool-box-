@@ -35,7 +35,7 @@ try:
     import torch
     import torchvision
     TORCH_AVAILABLE = True
-except ImportError:
+except (ImportError, OSError):  # ← Add OSError here
     TORCH_AVAILABLE = False
 
 

@@ -1008,22 +1008,73 @@ def _perform_decoding(image_file, decode_method, use_encryption, decryption_pass
         
         progress.progress(70, text="Validating message...")
         
+        # Flag to track if auto-recovery already handled decryption
+        auto_recovery_handled_decryption = False
+        
         if not decoded_message or not decoded_message.strip():
-            progress.empty()
-            show_error(
-                f"No hidden message found using **{decode_method}** method.\n\n"
-                "**Possible causes:**\n"
-                "- Wrong decoding method selected\n"
-                "- Image was not encoded with this tool\n"
-                "- Image was compressed or modified after encoding\n\n"
-                "💡 **Tip:** Try a different method or enable ECC recovery."
-            )
-            return
+            # Smart fallback: Try ECC recovery with common strength values
+            # This handles the case where user encoded with ECC but didn't enable recovery during decode
+            progress.progress(75, text="Initial extraction empty. Trying ECC recovery...")
+            
+            ecc_recovery_successful = False
+            for nsym_attempt in [16, 32, 64]:  # Try common ECC strengths
+                try:
+                    from stegotool.modules.module6_redundancy.ui_section import decode_message_with_ecc_recovery
+                    
+                    # Get the raw extracted data (might be None/empty, which is ok)
+                    raw_extracted = dwt_decode(image, update_progress=None) if decode_method == "Hybrid DWT" else \
+                                   dct_decode(image, update_progress=None) if decode_method == "Hybrid DCT" else \
+                                   lsb_decode(image)
+                    
+                    if not raw_extracted:
+                        continue
+                    
+                    # Try to recover with ECC
+                    recovered_msg, status = decode_message_with_ecc_recovery(
+                        raw_extracted,
+                        use_ecc_recovery=True,
+                        nsym=nsym_attempt,
+                        use_encryption=use_encryption,
+                        decryption_password=decryption_password
+                    )
+                    
+                    if recovered_msg and recovered_msg.strip():
+                        decoded_message = recovered_msg
+                        auto_recovery_handled_decryption = True  # Mark that decryption is already done
+                        ecc_recovery_successful = True
+                        show_success(
+                            f"✅ **ECC recovery successful!** Message recovered with nsym={nsym_attempt}.\n\n"
+                            "💡 Next time, enable 'ECC recovery' during decoding for faster extraction."
+                        )
+                        logger.info(f"Auto-ECC recovery succeeded with nsym={nsym_attempt}")
+                        break
+                except Exception as ecc_err:
+                    logger.debug(f"ECC recovery attempt (nsym={nsym_attempt}) failed: {ecc_err}")
+                    continue
+            
+            if not ecc_recovery_successful:
+                progress.empty()
+                show_error(
+                    f"No hidden message found using **{decode_method}** method.\n\n"
+                    "**Possible causes:**\n"
+                    "- Wrong decoding method selected\n"
+                    "- Image was not encoded with this tool\n"
+                    "- Image was compressed or modified after encoding\n\n"
+                    "💡 **Tips:**\n"
+                    "- Try a different encoding method\n"
+                    "- Enable 'ECC recovery' if message was encoded with error correction\n"
+                    "- Ensure the image hasn't been resized or recompressed"
+                )
+                return
         
         progress.progress(85, text="Processing recovery...")
         
+        # Skip manual decryption if auto-recovery already handled it
+        if auto_recovery_handled_decryption:
+            # Auto-recovery already processed ECC and decryption, message is ready to display
+            pass
         # Attempt ECC recovery if enabled
-        if use_ecc_recovery:
+        elif use_ecc_recovery:
             try:
                 from stegotool.modules.module6_redundancy.ui_section import decode_message_with_ecc_recovery
                 

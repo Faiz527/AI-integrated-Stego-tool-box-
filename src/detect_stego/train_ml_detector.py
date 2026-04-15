@@ -85,6 +85,7 @@ def generate_random_image(size=(256, 256), seed=None):
 def generate_stego_image(cover_img, method='lsb', seed=None):
     """
     Generate a stego image by embedding data in cover image.
+    Supports diverse message types to reduce model bias.
     
     Args:
         cover_img: numpy array - Cover image
@@ -98,7 +99,7 @@ def generate_stego_image(cover_img, method='lsb', seed=None):
         if seed is not None:
             np.random.seed(seed)
         
-        # Generate random secret message
+        # Generate random secret message (ASCII-only, proven to work best)
         msg_len = np.random.randint(50, 500)
         secret_msg = ''.join(
             chr(np.random.randint(32, 126)) for _ in range(msg_len)

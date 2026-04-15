@@ -38,7 +38,7 @@ def apply_filter(img, filter_type):
 #                          LSB METHOD (SPATIAL DOMAIN)
 # ============================================================================
 
-def encode_image(img, secret_text, filter_type="None"):
+def encode_image(img, secret_text, filter_type="None", use_ecc=False, ecc_strength=32):
     """
     Encode secret message into image using LSB steganography.
     
@@ -46,6 +46,8 @@ def encode_image(img, secret_text, filter_type="None"):
         img (PIL.Image): Input image
         secret_text (str): Message to encode
         filter_type (str): Filter type ('None', 'Blur', 'Sharpen', 'Grayscale')
+        use_ecc (bool): Enable Reed-Solomon error correction
+        ecc_strength (int): ECC parity bytes (higher = more robust but larger)
     
     Returns:
         PIL.Image: Encoded image
@@ -70,6 +72,17 @@ def encode_image(img, secret_text, filter_type="None"):
         secret_bytes = bytes(secret_text)
     else:
         secret_bytes = secret_text.encode('utf-8')
+    
+    # Apply ECC if enabled (BEFORE embedding)
+    if use_ecc:
+        try:
+            from stegotool.modules.module6_redundancy import add_redundancy
+            secret_bytes = add_redundancy(secret_bytes, nsym=ecc_strength)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"LSB ECC encoding failed: {e}. Proceeding without ECC.")
+    
     message_length = len(secret_bytes)
     
     # Check capacity: 2 bytes for length + message
@@ -102,12 +115,14 @@ def encode_image(img, secret_text, filter_type="None"):
     return encoded_img
 
 
-def decode_image(img):
+def decode_image(img, use_ecc=False, ecc_strength=32):
     """
     Decode secret message from LSB-encoded image.
     
     Args:
         img (PIL.Image): Encoded image
+        use_ecc (bool): Enable Reed-Solomon error correction recovery
+        ecc_strength (int): ECC parity bytes (must match encoding)
     
     Returns:
         str: Decoded message (empty string if no message found)
@@ -136,12 +151,31 @@ def decode_image(img):
     # Extract message bits
     message_bits = bits[16 : 16 + (message_length * 8)]
     
+    # Verify terminator if present (data integrity check)
+    terminator_start = 16 + (message_length * 8)
+    if len(bits) >= terminator_start + 8:
+        terminator_bits = bits[terminator_start : terminator_start + 8]
+        if terminator_bits != '11111110':
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning("LSB: Message integrity check FAILED - terminator not found. Data may be corrupted.")
+    
     # Convert bits to bytes
     message_bytes = bytearray()
     for i in range(0, len(message_bits), 8):
         byte_bits = message_bits[i : i + 8]
         if len(byte_bits) == 8:
             message_bytes.append(int(byte_bits, 2))
+    
+    # Apply ECC recovery if enabled (AFTER extraction)
+    if use_ecc:
+        try:
+            from stegotool.modules.module6_redundancy import recover_redundancy
+            message_bytes = recover_redundancy(message_bytes, nsym=ecc_strength)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"LSB ECC recovery failed: {e}. Returning corrupted data.")
     
     # Decode from UTF-8
     try:

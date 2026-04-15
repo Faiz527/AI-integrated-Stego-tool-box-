@@ -62,9 +62,9 @@ def _extract_bits_from_subband(subband, bits, message_length_ref, total_bits_ref
             # Check if we have 16 bits to read length
             if len(bits) == 16 and message_length_ref[0] is None:
                 msg_len = int(''.join(bits[:16]), 2)
-                if msg_len == 0 or msg_len > 100000:
+                if msg_len == 0:
                     message_length_ref[0] = 0
-                    return True  # invalid
+                    return True  # invalid length
                 message_length_ref[0] = msg_len
                 total_bits_ref[0] = 16 + (msg_len * 8)
             
@@ -76,7 +76,7 @@ def _extract_bits_from_subband(subband, bits, message_length_ref, total_bits_ref
     return False
 
 
-def encode_dwt(image, message, update_progress=None):
+def encode_dwt(image, message, update_progress=None, use_ecc=False, ecc_strength=32):
     """
     ACTUAL DWT implementation - embeds in wavelet coefficients.
 
@@ -85,6 +85,8 @@ def encode_dwt(image, message, update_progress=None):
         message (str): Secret message (UTF-8)
         update_progress (callable): Optional callback for progress updates
                                    Called with float 0.0-1.0 at various stages
+        use_ecc (bool): Enable Reed-Solomon error correction
+        ecc_strength (int): ECC parity bytes (higher = more robust but larger)
 
     Returns:
         PIL.Image: Encoded image with hidden message
@@ -100,18 +102,33 @@ def encode_dwt(image, message, update_progress=None):
 
     h, w = img_array.shape
 
-    # Ensure dimensions are even
+    # Ensure dimensions are even (required for wavelet decomposition)
+    # Pad instead of truncate to preserve data
     if h % 2 != 0:
-        h -= 1
+        h += 1
     if w % 2 != 0:
-        w -= 1
-    img_array = img_array[:h, :w]
+        w += 1
+    # Pad with edge values (better than truncation)
+    img_array = np.pad(
+        img_array,
+        ((0, h - img_array.shape[0]), (0, w - img_array.shape[1])),
+        mode='edge'
+    )
 
     # Message encoding
     if isinstance(message, (bytes, bytearray)):
         message_bytes = bytes(message)
     else:
         message_bytes = message.encode('utf-8')
+    
+    # Apply ECC if enabled (BEFORE embedding)
+    if use_ecc:
+        try:
+            from stegotool.modules.module6_redundancy import add_redundancy
+            message_bytes = add_redundancy(message_bytes, nsym=ecc_strength)
+        except Exception as e:
+            logger.warning(f"DWT ECC encoding failed: {e}. Proceeding without ECC.")
+    
     message_length = len(message_bytes)
 
     # Calculate capacity
@@ -173,7 +190,7 @@ def encode_dwt(image, message, update_progress=None):
     logger.info(f"DWT: Successfully encoded {bit_index} bits")
 
     return encoded_image
-def decode_dwt(image, update_progress=None):
+def decode_dwt(image, update_progress=None, use_ecc=False, ecc_strength=32):
     """
     Decode message from DWT-encoded image.
 
@@ -181,6 +198,8 @@ def decode_dwt(image, update_progress=None):
         image (PIL.Image): Encoded image
         update_progress (callable): Optional callback for progress updates
                                    Called with float 0.0-1.0 at various stages
+        use_ecc (bool): Enable Reed-Solomon error correction recovery
+        ecc_strength (int): ECC parity bytes (must match encoding)
 
     Returns:
         str: Decoded message (empty string if extraction fails)
@@ -193,11 +212,18 @@ def decode_dwt(image, update_progress=None):
         img_array = np.array(gray, dtype=np.float64)
 
         h, w = img_array.shape
+        # Ensure dimensions are even (required for wavelet decomposition)
+        # Pad instead of truncate for consistency with encoding
         if h % 2 != 0:
-            h -= 1
+            h += 1
         if w % 2 != 0:
-            w -= 1
-        img_array = img_array[:h, :w]
+            w += 1
+        # Pad with edge values
+        img_array = np.pad(
+            img_array,
+            ((0, h - img_array.shape[0]), (0, w - img_array.shape[1])),
+            mode='edge'
+        )
 
         if update_progress:
             update_progress(0.1)
@@ -241,8 +267,11 @@ def decode_dwt(image, update_progress=None):
         
         logger.debug(f"DWT: Extracted message length = {message_length}")
 
-        if message_length == 0 or message_length > 100000:
-            logger.warning(f"DWT: Invalid message length: {message_length}")
+        # Validate message length against actual subband capacity (not hardcoded limit)
+        subband_size = (h // 2) * (w // 2)
+        max_capacity = (subband_size * 3) // 8  # 3 subbands * subband_size / 8 bits per byte
+        if message_length == 0 or message_length > max_capacity:
+            logger.warning(f"DWT: Invalid message length {message_length} (capacity: {max_capacity} bytes)")
             return ""
 
         total_bits_needed = 16 + (message_length * 8)
@@ -256,13 +285,34 @@ def decode_dwt(image, update_progress=None):
             byte_bits = ''.join(bits[16 + k*8 : 16 + (k+1)*8])
             message_bytes.append(int(byte_bits, 2))
 
-        decoded = message_bytes.decode('utf-8')
+        # Apply ECC recovery if enabled (AFTER extraction)
+        if use_ecc:
+            try:
+                from stegotool.modules.module6_redundancy import recover_redundancy
+                message_bytes = recover_redundancy(message_bytes, nsym=ecc_strength)
+                logger.debug(f"DWT: ECC recovery succeeded")
+            except Exception as e:
+                logger.warning(f"DWT: ECC recovery failed - {e}. Data may be corrupted.")
         
-        if update_progress:
-            update_progress(1.0)
+        # Try UTF-8 decode
+        try:
+            decoded = message_bytes.decode('utf-8')
+            
+            if update_progress:
+                update_progress(1.0)
 
-        logger.info(f"DWT: Successfully decoded {len(decoded)} characters")
-        return decoded
+            logger.info(f"DWT: Successfully decoded {len(decoded)} characters")
+            return decoded
+        
+        except UnicodeDecodeError:
+            # Can't decode as UTF-8, use error handling
+            decoded_binary = message_bytes.decode('utf-8', errors='replace')
+            
+            if update_progress:
+                update_progress(1.0)
+            
+            logger.debug(f"DWT: UTF-8 decode with error handling ({len(message_bytes)} bytes)")
+            return decoded_binary
 
     except UnicodeDecodeError:
         logger.warning("DWT: UTF-8 decode failed - not a valid DWT-encoded image")

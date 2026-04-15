@@ -30,7 +30,7 @@ QUANT_STEP = 25
 DOWNSAMPLE_THRESHOLD = 2000
 
 
-def encode_dct(image, message, update_progress=None):
+def encode_dct(image, message, update_progress=None, use_ecc=False, ecc_strength=32):
     """
     ACTUAL DCT implementation - embeds in DCT coefficients.
     
@@ -48,6 +48,8 @@ def encode_dct(image, message, update_progress=None):
         message (str): Secret message to encode (UTF-8)
         update_progress (callable): Optional callback for progress updates
                                    Called with float 0.0-1.0 every 100 blocks
+        use_ecc (bool): Enable Reed-Solomon error correction
+        ecc_strength (int): ECC parity bytes (higher = more robust but larger)
     
     Returns:
         PIL.Image: Encoded image with hidden message
@@ -72,11 +74,25 @@ def encode_dct(image, message, update_progress=None):
     img_array = np.array(gray, dtype=np.float64)
     h, w = img_array.shape
     
+    # Align to 8×8 DCT block boundaries (ensure no data loss at edges)
+    h = (h // 8) * 8
+    w = (w // 8) * 8
+    img_array = img_array[:h, :w]
+    
     # Message encoding
     if isinstance(message, (bytes, bytearray)):
         message_bytes = bytes(message)
     else:
         message_bytes = message.encode('utf-8')
+    
+    # Apply ECC if enabled (BEFORE embedding)
+    if use_ecc:
+        try:
+            from stegotool.modules.module6_redundancy import add_redundancy
+            message_bytes = add_redundancy(message_bytes, nsym=ecc_strength)
+        except Exception as e:
+            logger.warning(f"DCT ECC encoding failed: {e}. Proceeding without ECC.")
+    
     message_length = len(message_bytes)
     
     # Calculate capacity: 1 bit per 8×8 block
@@ -168,7 +184,7 @@ def encode_dct(image, message, update_progress=None):
     return encoded_image
 
 
-def decode_dct(image, update_progress=None):
+def decode_dct(image, update_progress=None, use_ecc=False, ecc_strength=32):
     """
     Decode message from DCT-encoded image.
     
@@ -176,6 +192,8 @@ def decode_dct(image, update_progress=None):
         image (PIL.Image): Encoded image
         update_progress (callable): Optional callback for progress updates
                                    Called with float 0.0-1.0 every 100 blocks
+        use_ecc (bool): Enable Reed-Solomon error correction recovery
+        ecc_strength (int): ECC parity bytes (must match encoding)
     
     Returns:
         str: Decoded message (empty string if extraction fails)
@@ -196,6 +214,12 @@ def decode_dct(image, update_progress=None):
             gray = gray.resize(new_size, Image.Resampling.LANCZOS)
         
         img_array = np.array(gray, dtype=np.float64)
+        
+        # Align to 8×8 DCT block boundaries (consistency with encoding)
+        h_orig, w_orig = img_array.shape
+        h = (h_orig // 8) * 8
+        w = (w_orig // 8) * 8
+        img_array = img_array[:h, :w]
         
         h, w = img_array.shape
         num_blocks_h = h // 8
@@ -255,8 +279,10 @@ def decode_dct(image, update_progress=None):
         
         logger.debug(f"DCT: Extracted message length = {message_length}")
         
-        if message_length == 0 or message_length > 100000:
-            logger.warning(f"DCT: Invalid message length: {message_length}")
+        # Validate message length against actual image capacity (not hardcoded limit)
+        max_capacity = total_blocks // 8  # 1 bit per block / 8 bits per byte
+        if message_length == 0 or message_length > max_capacity:
+            logger.warning(f"DCT: Invalid message length {message_length} (capacity: {max_capacity} bytes)")
             return ""
         
         total_bits_needed = 16 + (message_length * 8)
@@ -270,9 +296,26 @@ def decode_dct(image, update_progress=None):
             byte_bits = ''.join(bits[16 + k*8 : 16 + (k+1)*8])
             message_bytes.append(int(byte_bits, 2))
         
-        decoded = message_bytes.decode('utf-8')
-        logger.info(f"DCT: Successfully decoded {len(decoded)} characters")
-        return decoded
+        # Apply ECC recovery if enabled (AFTER extraction)
+        if use_ecc:
+            try:
+                from stegotool.modules.module6_redundancy import recover_redundancy
+                message_bytes = recover_redundancy(message_bytes, nsym=ecc_strength)
+                logger.debug(f"DCT: ECC recovery succeeded")
+            except Exception as e:
+                logger.warning(f"DCT: ECC recovery failed - {e}. Data may be corrupted.")
+        
+        # Try UTF-8 decode, but return raw bytes if it fails
+        try:
+            decoded = message_bytes.decode('utf-8')
+            logger.info(f"DCT: Successfully decoded {len(decoded)} characters")
+            return decoded
+        
+        except UnicodeDecodeError:
+            # Can't decode as UTF-8, return with error handling
+            decoded_binary = message_bytes.decode('utf-8', errors='replace')
+            logger.debug(f"DCT: UTF-8 decode with error handling ({len(message_bytes)} bytes)")
+            return decoded_binary
     
     except UnicodeDecodeError:
         logger.warning("DCT: UTF-8 decode failed - not a valid DCT-encoded image")

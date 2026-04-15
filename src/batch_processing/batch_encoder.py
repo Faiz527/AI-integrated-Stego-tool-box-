@@ -38,7 +38,9 @@ def batch_encode_images(
     encrypt_password: str = None,
     encrypt: bool = False,
     batch_id: str = None,
-    batch_mode: str = MODE_UNIFORM
+    batch_mode: str = MODE_UNIFORM,
+    use_ecc: bool = False,
+    ecc_strength: int = 32
 ) -> dict:
     """
     Encode secret message into multiple images using selected methods.
@@ -55,6 +57,8 @@ def batch_encode_images(
         encrypt (bool): Whether to encrypt message
         batch_id (str): Unique batch identifier for output folder
         batch_mode (str): 'uniform' or 'packetized'
+        use_ecc (bool): Enable Reed-Solomon error correction
+        ecc_strength (int): ECC parity bytes (higher = more robust)
     
     Returns:
         dict: {
@@ -221,11 +225,11 @@ def batch_encode_images(
                     logger.debug(f"  {method}: Starting encoding...")
                     
                     if method == 'LSB':
-                        encoded_img = encode_image(img, msg_to_embed)
+                        encoded_img = encode_image(img, msg_to_embed, use_ecc=use_ecc, ecc_strength=ecc_strength)
                     elif method == 'DCT':
-                        encoded_img = encode_dct(img, msg_to_embed)
+                        encoded_img = encode_dct(img, msg_to_embed, use_ecc=use_ecc, ecc_strength=ecc_strength)
                     elif method == 'DWT':
-                        encoded_img = encode_dwt(img, msg_to_embed)
+                        encoded_img = encode_dwt(img, msg_to_embed, use_ecc=use_ecc, ecc_strength=ecc_strength)
                     else:
                         logger.warning(f"  {method}: Unknown method")
                         continue
@@ -311,7 +315,9 @@ def batch_decode_images(
     image_paths: list,
     methods: list = None,
     decrypt_password: str = None,
-    decrypt: bool = False
+    decrypt: bool = False,
+    use_ecc: bool = False,
+    ecc_strength: int = 32
 ) -> dict:
     """
     Decode messages from multiple images.
@@ -324,6 +330,8 @@ def batch_decode_images(
         methods (list): Methods to try for decoding
         decrypt_password (str): Password for decryption
         decrypt (bool): Whether to decrypt after decoding
+        use_ecc (bool): Enable Reed-Solomon error correction recovery
+        ecc_strength (int): ECC parity bytes (must match encoding)
     
     Returns:
         dict: Decoding results with auto-detected mode handling
@@ -370,7 +378,7 @@ def batch_decode_images(
                 if method not in method_funcs:
                     continue
                 try:
-                    decoded = method_funcs[method](img)
+                    decoded = method_funcs[method](img, use_ecc=use_ecc, ecc_strength=ecc_strength)
                     if decoded:
                         decoded_message = decoded
                         used_method = method
