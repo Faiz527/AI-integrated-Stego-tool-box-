@@ -371,19 +371,31 @@ def verify_user(username: str, password: str) -> dict:
 
 def log_activity(user_id: int, action: str, details: str = None):
     """
-    Log user activity.
+    Log user activity (non-blocking - errors don't crash the workflow).
     
     Args:
         user_id (int): User ID
         action (str): Action description
         details (str): Additional details
     
-    Raises:
-        DatabaseError: If logging fails
+    Note:
+        This function silently fails if database operations don't work.
+        It ensures activity logging never breaks the main workflow.
     """
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        
+        # Ensure activity_log table exists before logging
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS activity_log (
+                id SERIAL PRIMARY KEY,
+                user_id INT NOT NULL REFERENCES users(id),
+                action VARCHAR(255),
+                details TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
         
         cursor.execute(
             "INSERT INTO activity_log (user_id, action, details) VALUES (%s, %s, %s)",
@@ -395,11 +407,12 @@ def log_activity(user_id: int, action: str, details: str = None):
         conn.close()
         logger.info(f"Activity logged for user {user_id}")
         
-    except DatabaseError:
-        raise
     except psycopg2.Error as e:
-        logger.error(f"Failed to log activity: {str(e)}")
-        raise DatabaseError("Failed to log activity")
+        # Log the error but don't crash - activity logging is non-critical
+        logger.debug(f"Activity logging skipped (non-critical): {str(e)[:100]}")
+    except Exception as e:
+        # Catch all other errors and log silently - don't propagate
+        logger.debug(f"Activity logging skipped (non-critical): {str(e)[:100]}")
 
 
 def get_operation_stats(days: int = 7) -> dict:

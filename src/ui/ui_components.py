@@ -999,12 +999,14 @@ def _perform_decoding(image_file, decode_method, use_encryption, decryption_pass
         decoded_message = ""
         
         # Decode using the selected method
+        # IMPORTANT: Pass use_ecc to decode functions so ECC recovery happens BEFORE string conversion
+        # This prevents encrypted data from being corrupted during UTF-8 decode
         if decode_method == "LSB":
-            decoded_message = lsb_decode(image)
+            decoded_message = lsb_decode(image, use_ecc=use_ecc_recovery, ecc_strength=ecc_strength)
         elif decode_method == "Hybrid DCT":
-            decoded_message = dct_decode(image, update_progress=update_decoding_progress)
+            decoded_message = dct_decode(image, update_progress=update_decoding_progress, use_ecc=use_ecc_recovery, ecc_strength=ecc_strength)
         elif decode_method == "Hybrid DWT":
-            decoded_message = dwt_decode(image, update_progress=update_decoding_progress)
+            decoded_message = dwt_decode(image, update_progress=update_decoding_progress, use_ecc=use_ecc_recovery, ecc_strength=ecc_strength)
         
         progress.progress(70, text="Validating message...")
         
@@ -1073,59 +1075,26 @@ def _perform_decoding(image_file, decode_method, use_encryption, decryption_pass
         if auto_recovery_handled_decryption:
             # Auto-recovery already processed ECC and decryption, message is ready to display
             pass
-        # Attempt ECC recovery if enabled
-        elif use_ecc_recovery:
-            try:
-                from stegotool.modules.module6_redundancy.ui_section import decode_message_with_ecc_recovery
-                
-                recovered_msg, status = decode_message_with_ecc_recovery(
-                    decoded_message,
-                    use_ecc_recovery=True,
-                    nsym=ecc_strength,
-                    use_encryption=use_encryption,
-                    decryption_password=decryption_password
-                )
-                decoded_message = recovered_msg
-                
-                if status == 'ecc_recovered':
-                    show_info(f"✅ ECC recovery successful! (~{ecc_strength//2} byte errors corrected)")
+        # ECC recovery is now handled by decode functions above (when use_ecc_recovery=True)
+        # Just proceed with optional decryption
+        elif use_encryption:
+            if not decryption_password:
+                progress.empty()
+                show_error("Please enter the decryption password.")
+                return
             
-            except ImportError:
-                logger.warning("ECC recovery module not available")
-            except ValueError as e:
-                # Fall back to normal decryption
-                logger.warning(f"ECC recovery failed, trying normal decryption: {e}")
-                if use_encryption and decryption_password:
-                    # Check if message actually looks encrypted
-                    if _is_likely_encrypted(decoded_message):
-                        try:
-                            decoded_message = decrypt_message(decoded_message, decryption_password)
-                        except Exception as decrypt_err:
-                            progress.empty()
-                            show_error(f"Decryption failed: {str(decrypt_err)}")
-                            return
-                    else:
-                        logger.info("Message doesn't look encrypted. Skipping decryption after ECC recovery failed.")
-        else:
-            # Normal decryption without ECC
-            if use_encryption:
-                if not decryption_password:
+            # Check if message actually looks encrypted
+            if _is_likely_encrypted(decoded_message):
+                try:
+                    decoded_message = decrypt_message(decoded_message, decryption_password)
+                except Exception as e:
                     progress.empty()
-                    show_error("Please enter the decryption password.")
+                    show_error(f"Decryption failed. Wrong password? Error: {str(e)}")
                     return
-                
-                # Check if message actually looks encrypted
-                if _is_likely_encrypted(decoded_message):
-                    try:
-                        decoded_message = decrypt_message(decoded_message, decryption_password)
-                    except Exception as e:
-                        progress.empty()
-                        show_error(f"Decryption failed. Wrong password? Error: {str(e)}")
-                        return
-                else:
-                    # Message looks like plaintext, not encrypted
-                    logger.info("Message doesn't look encrypted (looks like plaintext). Skipping decryption.")
-                    st.info("💡 Message appears to be unencrypted plaintext. Decryption checkbox was checked but message is already readable.")
+            else:
+                # Message looks like plaintext, not encrypted
+                logger.info("Message doesn't look encrypted (looks like plaintext). Skipping decryption.")
+                st.info("💡 Message appears to be unencrypted plaintext. Decryption checkbox was checked but message is already readable.")
         
         progress.progress(100, text="Done!")
         progress.empty()
